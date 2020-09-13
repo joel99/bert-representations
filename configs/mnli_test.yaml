@@ -1,0 +1,5 @@
+MODEL_DIR: "/nethome/jye72/share/bert-representations/"
+DATA:
+    DATAPATH: "/nethome/jye72/share/bert-representations/data/MNLI"
+TRAIN:
+    NUM_EPOCHS_PER_TASK: 3
