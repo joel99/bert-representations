@@ -17,7 +17,10 @@ from src.run_finetuning_mnli import run_mnli
 # finetuning depnds on cmmon
 # common depends on finetuning
 TASK_DICT = {
-    "mnli": run_mnli
+    "mnli": run_mnli,
+    "ner": run_ner,
+    "sts_b": run_sts_b,
+    "sst_2": run_sst_2
 }
 
 def get_train_func(cfg, checkpoint_path=None):
