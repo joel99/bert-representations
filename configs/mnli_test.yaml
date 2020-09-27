@@ -1,5 +1,5 @@
-MODEL_DIR: "/nethome/jye72/share/bert-representations/"
+MODEL_DIR: "/srv/share/svanga3/bert-representations/"
 DATA:
-    DATAPATH: "/nethome/jye72/share/bert-representations/data/MNLI"
+    DATAPATH: "/srv/share/svanga3/bert-representations/glue_data/MNLI"
 TRAIN:
     NUM_EPOCHS_PER_TASK: 3
