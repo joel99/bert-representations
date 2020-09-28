@@ -1,0 +1,8 @@
+MODEL_DIR: "/srv/share/svanga3/bert-representations/"
+DATA:
+    DATAPATH: "/srv/share/svanga3/bert-representations/glue_data/SST-2"
+TRAIN:
+    NUM_EPOCHS_PER_TASK: 3
+TASK:
+    TASKS:
+        - sst_2
