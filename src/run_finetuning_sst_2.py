@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-
-# Src: https://colab.research.google.com/github/huggingface/blog/blob/master/notebooks/trainer/01_text_classification.ipynb
 from transformers import AutoConfig, AutoModelForSequenceClassification, GlueDataset
 from transformers import GlueDataTrainingArguments as DataTrainingArguments
 from transformers import (
@@ -13,20 +10,20 @@ from src import (
     logger
 )
 
-def run_mnli(cfg, model_args, training_args, tokenizer, ckpt_path=None):
+def run_sst_2(cfg, model_args, training_args, tokenizer, ckpt_path=None):
     r"""
         cfg: YACS cfg node
         ckpt_path: Unsupported
     """
-    task_name = "mnli"
+    task_name = "sst-2"
 
     data_args = DataTrainingArguments(
         task_name=task_name,
         data_dir=cfg.DATA.DATAPATH
     )
-
+    # sst-2 num labels is 2. pos and neg.
     num_labels = glue_tasks_num_labels[data_args.task_name]
-    logger.info(f"Num MNLI Labels: \t {num_labels}")
+    logger.info(f"Num SST 2 Labels: \t {num_labels}")
 
     config = AutoConfig.from_pretrained(
         model_args.model_name_or_path,

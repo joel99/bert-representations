@@ -43,8 +43,13 @@ def compute_glue_eval_metrics(task_name: str, p: EvalPrediction) -> Dict:
     preds = np.argmax(p.predictions, axis=1)
     return glue_compute_metrics(task_name, preds, p.label_ids)
 
-EVAL_METRICS_FUNC_DICT = {
+def compute_glue_eval_metrics_regression(task_name: str, p: EvalPrediction) -> Dict:
+    preds = np.squeeze(p.predictions)
+    return glue_compute_metrics(task_name, preds, p.label_ids)
 
+
+EVAL_METRICS_FUNC_DICT = {
+    'sts-b': lambda p: compute_glue_eval_metrics_regression('sts-b', p)
 }
 
 def get_eval_metrics_func(task_name) -> Dict:

@@ -12,12 +12,17 @@ from src.common import (
 )
 
 from src.run_finetuning_mnli import run_mnli
-
+from src.run_finetuning_sst_2 import run_sst_2
+from src.run_finetuning_sts_b import run_sts_b
+from src.run_finetuning_ner import run_ner
 # init depends on common
 # finetuning depnds on cmmon
 # common depends on finetuning
 TASK_DICT = {
-    "mnli": run_mnli
+    "mnli": run_mnli,
+    "ner": run_ner,
+    "sts_b": run_sts_b,
+    "sst_2": run_sst_2
 }
 
 def get_train_func(cfg, checkpoint_path=None):
