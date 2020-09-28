@@ -15,7 +15,7 @@ def run_sts_b(cfg, model_args, training_args, tokenizer, ckpt_path=None):
         cfg: YACS cfg node
         ckpt_path: Unsupported
     """
-    task_name = "STS_B"
+    task_name = "sts-b"
 
     data_args = DataTrainingArguments(
         task_name=task_name,
