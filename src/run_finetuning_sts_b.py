@@ -16,6 +16,7 @@ def run_sts_b(cfg, model_args, training_args, tokenizer, ckpt_path=None):
         ckpt_path: Unsupported
     """
     task_name = "sts-b"
+    #The Semantic Textual Similarity Benchmark. It is a regression problem i.e num labels is 1.
 
     data_args = DataTrainingArguments(
         task_name=task_name,

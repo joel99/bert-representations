@@ -21,7 +21,7 @@ def run_sst_2(cfg, model_args, training_args, tokenizer, ckpt_path=None):
         task_name=task_name,
         data_dir=cfg.DATA.DATAPATH
     )
-
+    # sst-2 num labels is 2. pos and neg.
     num_labels = glue_tasks_num_labels[data_args.task_name]
     logger.info(f"Num SST 2 Labels: \t {num_labels}")
 
