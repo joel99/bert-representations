@@ -3,5 +3,6 @@ DATA:
     DATAPATH: "/srv/share/svanga3/bert-representations/glue_data/STS-B"
 TRAIN:
     NUM_EPOCHS_PER_TASK: 3
-TASKS:
-    - sts_b
+TASK:
+    TASKS:
+        - sts_b
