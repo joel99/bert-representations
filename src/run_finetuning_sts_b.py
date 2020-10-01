@@ -15,7 +15,6 @@ def run_sts_b(cfg, model_args, training_args, tokenizer, ckpt_path=None):
         cfg: YACS cfg node
         ckpt_path: Unsupported
     """
-    training_args.eval_steps = 60
     task_name = "sts-b"
     #The Semantic Textual Similarity Benchmark. It is a regression problem i.e num labels is 1.
 

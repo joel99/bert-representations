@@ -49,9 +49,10 @@ def get_train_func(cfg, checkpoint_path=None):
         save_steps=cfg.TRAIN.CHECKPOINT_INTERVAL,
         evaluate_during_training=cfg.TRAIN.DO_VAL,
         learning_rate=cfg.TRAIN.LR_INIT,
-        weight_decay=cfg.TRAIN.WEIGHT_DECAY
+        weight_decay=cfg.TRAIN.WEIGHT_DECAY,
+        eval_steps=cfg.TRAIN.EVAL_STEPS
     )
-
+    print(f"training arguments:{training_args}")
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.model_name_or_path,
     )
