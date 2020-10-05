@@ -47,34 +47,9 @@ def compute_glue_eval_metrics_regression(task_name: str, p: EvalPrediction) -> D
     preds = np.squeeze(p.predictions)
     return glue_compute_metrics(task_name, preds, p.label_ids)
 
-def align_predictions(predictions: np.ndarray, label_ids: np.ndarray) -> Tuple[List[int], List[int]]:
-    preds = np.argmax(predictions, axis=2)
-
-    batch_size, seq_len = preds.shape
-
-    out_label_list = [[] for _ in range(batch_size)]
-    preds_list = [[] for _ in range(batch_size)]
-
-    for i in range(batch_size):
-        for j in range(seq_len):
-            if label_ids[i, j] != nn.CrossEntropyLoss().ignore_index:
-                out_label_list[i].append(label_map[label_ids[i][j]])
-                preds_list[i].append(label_map[preds[i][j]])
-
-    return preds_list, out_label_list
-
-def compute_metrics_pos(p: EvalPrediction) -> Dict:
-    preds_list, out_label_list = align_predictions(p.predictions, p.label_ids)
-    return {
-        "accuracy_score": accuracy_score(out_label_list, preds_list),
-        "precision": precision_score(out_label_list, preds_list),
-        "recall": recall_score(out_label_list, preds_list),
-        "f1": f1_score(out_label_list, preds_list),
-    }
 
 EVAL_METRICS_FUNC_DICT = {
     'sts-b': lambda p: compute_glue_eval_metrics_regression('sts-b', p)
-    'pos': lambda p: compute_metrics_pos(p)
 }
 
 def get_eval_metrics_func(task_name) -> Dict:
