@@ -20,7 +20,7 @@ from src.run_finetuning_ner import run_ner
 # common depends on finetuning
 TASK_DICT = {
     "mnli": run_mnli,
-    "ner": run_ner,
+    "pos": run_pos,
     "sts_b": run_sts_b,
     "sst_2": run_sst_2
 }
