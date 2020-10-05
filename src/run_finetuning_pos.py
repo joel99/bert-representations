@@ -1,3 +1,29 @@
+import logging
+import os
+import sys
+from dataclasses import dataclass, field
+from importlib import import_module
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
+from seqeval.metrics import accuracy_score, f1_score, precision_score, recall_score
+from torch import nn
+
+from transformers import (
+    AutoConfig,
+    AutoModelForTokenClassification,
+    AutoTokenizer,
+    EvalPrediction,
+    HfArgumentParser,
+    Trainer,
+    TrainingArguments,
+    set_seed,
+)
+from utils_ner import Split, TokenClassificationDataset, TokenClassificationTask
+
+
+from importlib import import_module
+
 from transformers import AutoConfig, AutoModelForSequenceClassification, GlueDataset
 from transformers import GlueDataTrainingArguments as DataTrainingArguments
 from transformers import (
@@ -23,12 +49,19 @@ def run_pos(cfg, model_args, training_args, tokenizer, ckpt_path=None):
         cfg: YACS cfg node
         ckpt_path: Unsupported
     """
-    token_classification_task_clazz = getattr(module, model_args.task_type)
+    task_name = "POS"
+    data_args = DataTrainingArguments(
+        task_name=task_name,
+        data_dir=cfg.DATA.DATAPATH
+    )
+    module = import_module("tasks")
+    print( data_args.task_name)
+    token_classification_task_clazz = getattr(module, "POS")
     token_classification_task: TokenClassificationTask = token_classification_task_clazz()
-    labels = token_classification_task.get_labels(data_args.labels)
+    labels = token_classification_task.get_labels(None)
     label_map: Dict[int, str] = {i: label for i, label in enumerate(labels)}
     num_labels = len(labels)
-
+    print(f"labels:{labels}")
     # Load pretrained model and tokenizer
     #
     # Distributed training:
@@ -111,3 +144,4 @@ def run_pos(cfg, model_args, training_args, tokenizer, ckpt_path=None):
         eval_dataset=eval_dataset,
         compute_metrics=compute_metrics,
     )
+    trainer.train()
