@@ -1,5 +1,5 @@
 MODEL_DIR: "/srv/share/svanga3/bert-representations/"
 DATA:
-    DATAPATH: "/srv/share/svanga3/bert-representations/glue_data/MNLI"
+    DATAPATH: "/srv/share/svanga3/bert-representations/all_datasets"
 TRAIN:
-    NUM_EPOCHS_PER_TASK: 3
+    NUM_EPOCHS_PER_TASK: 4

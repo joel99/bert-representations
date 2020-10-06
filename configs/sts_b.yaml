@@ -2,7 +2,7 @@ MODEL_DIR: "/srv/share/svanga3/bert-representations/"
 MODEL:
     BASE: "bert-base-cased"
 DATA:
-    DATAPATH: "/srv/share/svanga3/bert-representations/glue_data/STS-B"
+    DATAPATH: "/srv/share/svanga3/bert-representations/all_datasets"
 TRAIN:
     NUM_EPOCHS_PER_TASK: 3
     LR_INIT: 2e-5

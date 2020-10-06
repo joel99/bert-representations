@@ -2,7 +2,10 @@ MODEL_DIR: "/srv/share/svanga3/bert-representations/"
 DATA:
     DATAPATH: "/srv/share/svanga3/bert-representations/all_datasets"
 TRAIN:
-    NUM_EPOCHS_PER_TASK: 3
+    NUM_UPDATES_PER_TASK: 10
+    CHECKPOINT_INTERVAL: 5
+    EVAL_STEPS: 5
 TASK:
     TASKS:
+        - mnli
         - sst_2

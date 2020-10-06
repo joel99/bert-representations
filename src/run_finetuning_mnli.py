@@ -50,4 +50,4 @@ def run_mnli(cfg, model_args, training_args, tokenizer, ckpt_path=None):
         compute_metrics=get_eval_metrics_func(task_name),
     )
 
-    trainer.train()
+    trainer.train(model_path=ckpt_path)
