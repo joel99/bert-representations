@@ -17,13 +17,13 @@ from src.utils import find_most_recent_path, find_data_path
 from src.run_finetuning_mnli import run_mnli
 from src.run_finetuning_sst_2 import run_sst_2
 from src.run_finetuning_sts_b import run_sts_b
-from src.run_finetuning_ner import run_ner
+from src.run_finetuning_pos import run_pos
 # init depends on common
 # finetuning depnds on cmmon
 # common depends on finetuning
 TASK_DICT = {
     "mnli": run_mnli,
-    "ner": run_ner,
+    "pos": run_pos,
     "sts_b": run_sts_b,
     "sst_2": run_sst_2
 }
