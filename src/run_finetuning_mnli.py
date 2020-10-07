@@ -34,10 +34,15 @@ def run_mnli(cfg, model_args, training_args, tokenizer, mode="train", ckpt_path=
         finetuning_task=data_args.task_name,
     )
 
-    model = AutoModelForSequenceClassification.from_pretrained(
-        model_args.model_name_or_path,
-        config=config,
-    )
+    if ckpt_path is not None:
+        model = AutoModelForSequenceClassification.from_pretrained(
+            ckpt_path
+        )
+    else:
+        model = AutoModelForSequenceClassification.from_pretrained(
+            model_args.model_name_or_path,
+            config=config,
+        )
 
     train_dataset = GlueDataset(data_args, tokenizer=tokenizer, limit_length=100_000)
     eval_dataset = GlueDataset(data_args, tokenizer=tokenizer, mode='dev')
@@ -51,4 +56,6 @@ def run_mnli(cfg, model_args, training_args, tokenizer, mode="train", ckpt_path=
     )
 
     if mode == "train":
-        trainer.train(model_path=ckpt_path)
+        trainer.train()
+    else:
+        trainer.evaluate()

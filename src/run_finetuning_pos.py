@@ -44,7 +44,7 @@ from src import (
 )
 from utils_ner import Split, TokenClassificationDataset, TokenClassificationTask
 
-def run_pos(cfg, model_args, training_args, tokenizer, ckpt_path=None):
+def run_pos(cfg, model_args, training_args, tokenizer, mode="train", ckpt_path=None):
     r"""
         cfg: YACS cfg node
         ckpt_path: Unsupported
@@ -75,12 +75,17 @@ def run_pos(cfg, model_args, training_args, tokenizer, ckpt_path=None):
         label2id={label: i for i, label in enumerate(labels)},
         cache_dir=model_args.cache_dir,
     )
-    model = AutoModelForTokenClassification.from_pretrained(
-        model_args.model_name_or_path,
-        from_tf=bool(".ckpt" in model_args.model_name_or_path),
-        config=config,
-        cache_dir=model_args.cache_dir,
-    )
+
+    if ckpt_path is not None:
+        model = AutoModelForTokenClassification.from_pretrained(
+            ckpt_path
+        )
+    else:
+        model = AutoModelForTokenClassification.from_pretrained(
+            model_args.model_name_or_path,
+            config=config,
+            cache_dir=model_args.cache_dir,
+        )
 
     # Get datasets
     train_dataset = (
@@ -144,4 +149,8 @@ def run_pos(cfg, model_args, training_args, tokenizer, ckpt_path=None):
         eval_dataset=eval_dataset,
         compute_metrics=compute_metrics,
     )
-    trainer.train()
+
+    if mode == "train":
+        trainer.train()
+    else:
+        trainer.evaluate()

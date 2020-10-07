@@ -129,7 +129,7 @@ def run_exp(exp_config: Union[List[str], str], run_type: str, ckpt_path="", run_
     set_seed(config.SEED)
 
     if ckpt_path is not None:
-        train_func = get_runner_func(config, checkpoint_path=ckpt_path)
+        runner_func = get_runner_func(config, checkpoint_path=ckpt_path, mode=run_type)
     else:
         if DO_PRESERVE_RUNS:
             if check_exists(config.TENSORBOARD_DIR) or \
@@ -140,11 +140,8 @@ def run_exp(exp_config: Union[List[str], str], run_type: str, ckpt_path="", run_
             check_exists(config.TENSORBOARD_DIR)
             check_exists(config.MODEL_DIR)
             check_exists(config.LOG_DIR)
-        train_func = get_runner_func(config)
-    if run_type == "train":
-        train_func()
-    elif run_type == "eval":
-        assert False, "not implemented"
+        runner_func = get_runner_func(config, mode=run_type)
+    runner_func()
 
 if __name__ == "__main__":
     main()

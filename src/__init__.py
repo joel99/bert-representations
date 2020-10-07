@@ -47,7 +47,8 @@ def make_training_args(cfg, checkpoint_path=None):
         evaluate_during_training=cfg.TRAIN.DO_VAL,
         learning_rate=cfg.TRAIN.LR_INIT,
         weight_decay=cfg.TRAIN.WEIGHT_DECAY,
-        eval_steps=cfg.TRAIN.EVAL_STEPS
+        eval_steps=cfg.TRAIN.EVAL_STEPS,
+        seed=cfg.SEED
     )
 
 def get_runner_func(
@@ -107,6 +108,7 @@ def get_runner_func(
                         model_args,
                         training_args,
                         tokenizer,
+                        mode=mode,
                         *args,
                         **kwargs
                     )
