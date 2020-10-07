@@ -13,7 +13,7 @@ from src import (
     logger
 )
 
-def run_mnli(cfg, model_args, training_args, tokenizer, ckpt_path=None):
+def run_mnli(cfg, model_args, training_args, tokenizer, mode="train", ckpt_path=None):
     r"""
         cfg: YACS cfg node
         ckpt_path: Unsupported
@@ -50,4 +50,5 @@ def run_mnli(cfg, model_args, training_args, tokenizer, ckpt_path=None):
         compute_metrics=get_eval_metrics_func(task_name),
     )
 
-    trainer.train(model_path=ckpt_path)
+    if mode == "train":
+        trainer.train(model_path=ckpt_path)

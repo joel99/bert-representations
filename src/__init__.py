@@ -50,9 +50,10 @@ def make_training_args(cfg, checkpoint_path=None):
         eval_steps=cfg.TRAIN.EVAL_STEPS
     )
 
-def get_train_func(
+def get_runner_func(
     cfg: CN,
-    checkpoint_path: str=None
+    checkpoint_path: str=None,
+    mode: str="train",
 ):
     r"""
         Return function that orchestrates fine-tuning.
@@ -80,6 +81,8 @@ def get_train_func(
                 model_args,
                 training_args,
                 tokenizer,
+                ckpt_path=checkpoint_path,
+                mode=mode,
                 *args,
                 **kwargs
             )

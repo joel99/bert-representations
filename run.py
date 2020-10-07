@@ -11,7 +11,7 @@ from transformers import (
 )
 
 from src import (
-    get_train_func,
+    get_runner_func,
     logger
 )
 
@@ -27,7 +27,7 @@ def get_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--run-type",
-        choices=["train", "eval"], # ! Eval not supported
+        choices=["train", "eval",], # ! Eval not supported
         required=True,
         help="run type of the experiment (train or eval)",
     )
@@ -43,7 +43,17 @@ def get_parser():
         "--ckpt-path",
         default=None,
         type=str,
-        help="full path to a ckpt (for eval or resumption)"
+        help="""path to a ckpt (for eval or resumption). Expected to be relative to the model dir.
+            Example: For MNLI task, pass in "checkpoint-1000" . This will be converted to model_dir/checkpoint-1000.
+            For multi-task "mnli, sst", to load mnli checkpoint, pass '0_mnli/checkpoint-1000'
+        """
+    )
+
+    parser.add_argument(
+        "--run-id",
+        default=None,
+        type=int,
+        help="id for automating random seeding"
     )
 
     parser.add_argument(
@@ -68,13 +78,14 @@ def check_exists(path, preserve=DO_PRESERVE_RUNS):
         return True
     return False
 
-def prepare_config(exp_config: Union[List[str], str], run_type: str, ckpt_path="", opts=None) -> None:
+def prepare_config(exp_config: Union[List[str], str], run_type: str, ckpt_path="", run_id=None, opts=None) -> None:
     r"""Prepare config node / do some preprocessing
 
     Args:
         exp_config: path to config file.
         run_type: "train" or "eval.
         ckpt_path: If training, ckpt to resume. If evaluating, ckpt to evaluate.
+        run_id: Seed, making subdirectories automatically.
         opts: list of strings of additional config options.
 
     Returns:
@@ -94,6 +105,12 @@ def prepare_config(exp_config: Union[List[str], str], run_type: str, ckpt_path="
     config.TENSORBOARD_DIR = osp.join(config.TENSORBOARD_DIR, config.VARIANT)
     config.MODEL_DIR = osp.join(config.MODEL_DIR, config.VARIANT)
     config.LOG_DIR = osp.join(config.LOG_DIR, config.VARIANT)
+    if run_id is not None:
+        config.SEED = run_id
+        run_str = f"run_{run_id}"
+        config.TENSORBOARD_DIR = osp.join(config.TENSORBOARD_DIR, run_str)
+        config.MODEL_DIR = osp.join(config.MODEL_DIR, run_str)
+        config.LOG_DIR = osp.join(config.LOG_DIR, run_str)
     config.freeze()
     os.makedirs(config.LOG_DIR, exist_ok=True)
 
@@ -103,28 +120,28 @@ def prepare_config(exp_config: Union[List[str], str], run_type: str, ckpt_path="
 
     return config, ckpt_path
 
-def run_exp(exp_config: Union[List[str], str], run_type: str, ckpt_path="", opts=None) -> None:
-    config, ckpt_path = prepare_config(exp_config, run_type, ckpt_path, opts)
+def run_exp(exp_config: Union[List[str], str], run_type: str, ckpt_path="", run_id=None, opts=None) -> None:
+    config, ckpt_path = prepare_config(exp_config, run_type, ckpt_path, run_id, opts)
 
     logfile_path = osp.join(config.LOG_DIR, f"{config.VARIANT}.log")
     logger.add_filehandler(logfile_path)
 
     set_seed(config.SEED)
 
-    if run_type == "train":
-        if ckpt_path is not None:
-            train_func = get_train_func(config, checkpoint_path=ckpt_path)
+    if ckpt_path is not None:
+        train_func = get_runner_func(config, checkpoint_path=ckpt_path)
+    else:
+        if DO_PRESERVE_RUNS:
+            if check_exists(config.TENSORBOARD_DIR) or \
+                check_exists(config.MODEL_DIR) or \
+                check_exists(config.LOG_DIR):
+                exit(1)
         else:
-            if DO_PRESERVE_RUNS:
-                if check_exists(config.TENSORBOARD_DIR) or \
-                    check_exists(config.MODEL_DIR) or \
-                    check_exists(config.LOG_DIR):
-                    exit(1)
-            else:
-                check_exists(config.TENSORBOARD_DIR)
-                check_exists(config.MODEL_DIR)
-                check_exists(config.LOG_DIR)
-            train_func = get_train_func(config)
+            check_exists(config.TENSORBOARD_DIR)
+            check_exists(config.MODEL_DIR)
+            check_exists(config.LOG_DIR)
+        train_func = get_runner_func(config)
+    if run_type == "train":
         train_func()
     elif run_type == "eval":
         assert False, "not implemented"

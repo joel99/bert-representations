@@ -55,7 +55,7 @@ def run_pos(cfg, model_args, training_args, tokenizer, ckpt_path=None):
         data_dir=cfg.DATA.DATAPATH
     )
     module = import_module("tasks")
-    print( data_args.task_name)
+    print(data_args.task_name)
     token_classification_task_clazz = getattr(module, "POS")
     token_classification_task: TokenClassificationTask = token_classification_task_clazz()
     labels = token_classification_task.get_labels(None)
