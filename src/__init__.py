@@ -4,31 +4,32 @@ from yacs.config import CfgNode as CN
 
 from transformers import TrainingArguments, AutoTokenizer
 
-from src.logger_wrapper import logger
-
-# Import tasks first or we'll go circular
-
-from src.common import (
+from src.utils import (
+    logger,
     ModelArguments,
-    get_eval_metrics_func,
+    find_data_path,
+    find_most_recent_path
 )
-from src.utils import find_most_recent_path, find_data_path
 
-from src.run_finetuning_mnli import run_mnli
-from src.run_finetuning_sst_2 import run_sst_2
-from src.run_finetuning_sts_b import run_sts_b
 from src.run_finetuning_pos import run_pos
+from src.run_finetuning_glue import run_glue
+from src.registry import get_model
 # init depends on common
 # finetuning depnds on cmmon
 # common depends on finetuning
+
+# ! RESOLVE DEPENDENCIES
+
+# The tasks we specify in config.yaml are the keys here
 TASK_DICT = {
-    "mnli": run_mnli,
+    "mnli": run_glue,
     "pos": run_pos,
-    "sts_b": run_sts_b,
-    "sst_2": run_sst_2
+    "sts_b": run_glue,
+    "sst_2": run_glue
+    # ! ADD DP @ Ayush
 }
 
-MULTITASK_STRATEGIES = { "SEQUENTIAL" }
+MULTITASK_STRATEGIES = { "SEQUENTIAL", "ROUND_ROBIN" }
 
 def make_training_args(cfg, checkpoint_path=None):
     return TrainingArguments(
@@ -76,13 +77,16 @@ def get_runner_func(
         cfg.defrost()
         cfg.DATA.DATAPATH = find_data_path(cfg.DATA.DATAPATH, task)
         cfg.freeze()
+
+        model = get_model(task, cfg, model_args, ckpt_path=checkpoint_path)
         bound_task = lambda *args, **kwargs: \
             TASK_DICT[task](
+                task, # Pass the runner the task name so it can pull any information we want to keep flexible from the registry
                 cfg,
+                model,
                 model_args,
                 training_args,
                 tokenizer,
-                ckpt_path=checkpoint_path,
                 mode=mode,
                 *args,
                 **kwargs
@@ -117,3 +121,9 @@ def get_runner_func(
                 task_checkpoint = find_most_recent_path(task_specific_cfg.MODEL_DIR)
 
         return sequential_evaluation
+    if cfg.TASK.MULTITASK_STRATEGY == "ROUND_ROBIN":
+        # TODO Load all datasets
+        for task_name, dataset in dataset_dict.items():
+            print(task_name)
+            print(dataset_dict[task_name]["train"][0])
+            print()

@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
 import os
+import glob
+import os.path as osp
+
 import socket
 from datetime import datetime
 from dataclasses import dataclass, field
@@ -11,6 +14,20 @@ from transformers import (
     EvalPrediction,
     glue_compute_metrics,
 )
+
+# Some utils for sequential training
+def find_most_recent_path(base):
+    r""" Gets most recent subfile."""
+    list_of_files = glob.glob(f"{base}/*")
+    return max(list_of_files, key=osp.getctime)
+
+def find_data_path(base, task_name):
+    r""" Find subdirectory that matches task"""
+    list_of_paths = glob.glob(f"{base}/*")
+    list_of_files = [osp.split(s)[1] for s in list_of_paths]
+    list_of_lower_files = [s.lower() for s in list_of_files]
+    index = list_of_lower_files.index(task_name.lower())
+    return list_of_paths[index]
 
 @dataclass
 class ModelArguments:
@@ -59,3 +76,12 @@ def get_eval_metrics_func(task_name) -> Dict:
     else:
         return lambda p: compute_glue_eval_metrics(task_name, p)
 
+
+# For data args
+TASK_KEY_TO_NAME = {
+    "mnli": "mnli",
+    "sts_b": "sts-b",
+    "sst_2": "sst-2",
+    "pos": "POS",
+    # ! ADD DP @ Ayush
+}

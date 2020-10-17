@@ -91,6 +91,12 @@ def prepare_config(exp_config: Union[List[str], str], run_type: str, ckpt_path="
     Returns:
         Runner, config, ckpt_path
     """
+    # For collaborative configs
+    BERT_DIR = os.environ.get("BERT_REPRESENTATIONS_WORKING_DIR", "/srv/share/svanga3/bert-representations/")
+    working_dir = ["MODEL_DIR", BERT_DIR] # Models files will dump in your working dir
+    if opts is None:
+        opts = []
+    opts.extend(working_dir)
     config = get_config(exp_config, opts)
 
     # Default behavior is to pull experiment name from config file

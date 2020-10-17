@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+from yacs.config import CfgNode as CN
+
+# Src: https://colab.research.google.com/github/huggingface/blog/blob/master/notebooks/trainer/01_text_classification.ipynb
 from transformers import AutoConfig, AutoModelForSequenceClassification, GlueDataset
 from transformers import GlueDataTrainingArguments as DataTrainingArguments
 from transformers import (
@@ -5,41 +9,24 @@ from transformers import (
     glue_tasks_num_labels,
 )
 
-from src import (
+from src.utils import (
+    logger,
     get_eval_metrics_func,
-    logger
+    TASK_KEY_TO_NAME,
 )
+from src.registry import get_model
 
-def run_sst_2(cfg, model_args, training_args, tokenizer, mode="train", ckpt_path=None):
+def run_glue(task_key, cfg, model, model_args, training_args, tokenizer, mode="train"):
     r"""
         cfg: YACS cfg node
         ckpt_path: Unsupported
     """
-    task_name = "sst-2"
+    task_name = TASK_KEY_TO_NAME[task_key]
 
     data_args = DataTrainingArguments(
         task_name=task_name,
         data_dir=cfg.DATA.DATAPATH
     )
-    # sst-2 num labels is 2. pos and neg.
-    num_labels = glue_tasks_num_labels[data_args.task_name]
-    logger.info(f"Num SST 2 Labels: \t {num_labels}")
-
-    config = AutoConfig.from_pretrained(
-        model_args.model_name_or_path,
-        num_labels=num_labels,
-        finetuning_task=data_args.task_name,
-    )
-
-    if ckpt_path is not None:
-        model = AutoModelForSequenceClassification.from_pretrained(
-            ckpt_path
-        )
-    else:
-        model = AutoModelForSequenceClassification.from_pretrained(
-            model_args.model_name_or_path,
-            config=config,
-        )
 
     train_dataset = GlueDataset(data_args, tokenizer=tokenizer, limit_length=100_000)
     eval_dataset = GlueDataset(data_args, tokenizer=tokenizer, mode='dev')

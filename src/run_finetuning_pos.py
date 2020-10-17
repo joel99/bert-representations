@@ -1,9 +1,9 @@
-import logging
 import os
 import sys
 from dataclasses import dataclass, field
 from importlib import import_module
 from typing import Dict, List, Optional, Tuple
+from yacs.config import CfgNode as CN
 
 import numpy as np
 from seqeval.metrics import accuracy_score, f1_score, precision_score, recall_score
@@ -19,12 +19,11 @@ from transformers import (
     TrainingArguments,
     set_seed,
 )
-from utils_ner import Split, TokenClassificationDataset, TokenClassificationTask
 
+from src.utils.utils_ner import Split, TokenClassificationDataset, TokenClassificationTask
 
 from importlib import import_module
 
-from transformers import AutoConfig, AutoModelForSequenceClassification, GlueDataset
 from transformers import GlueDataTrainingArguments as DataTrainingArguments
 from transformers import (
     Trainer,
@@ -38,13 +37,29 @@ from transformers import (
     set_seed,
 )
 
-from src import (
-    get_eval_metrics_func,
-    logger
+from src.utils import (
+    logger,
 )
-from utils_ner import Split, TokenClassificationDataset, TokenClassificationTask
 
-def run_pos(cfg, model_args, training_args, tokenizer, mode="train", ckpt_path=None):
+def get_pos_config(cfg: CN, model_args):
+    module = import_module("src.utils.tasks")
+    token_classification_task_clazz = getattr(module, "POS")
+    token_classification_task: TokenClassificationTask = token_classification_task_clazz()
+    labels = token_classification_task.get_labels(None)
+    label_map: Dict[int, str] = {i: label for i, label in enumerate(labels)}
+    num_labels = len(labels)
+    print(f"labels:{labels}")
+
+    config = AutoConfig.from_pretrained(
+        model_args.config_name if model_args.config_name else model_args.model_name_or_path,
+        num_labels=num_labels,
+        id2label=label_map,
+        label2id={label: i for i, label in enumerate(labels)},
+        cache_dir=model_args.cache_dir,
+    )
+    return config, token_classification_task, labels, label_map
+
+def run_pos(task_key: str, cfg: CN, model, model_args, training_args, tokenizer, mode="train"):
     r"""
         cfg: YACS cfg node
         ckpt_path: Unsupported
@@ -54,38 +69,14 @@ def run_pos(cfg, model_args, training_args, tokenizer, mode="train", ckpt_path=N
         task_name=task_name,
         data_dir=cfg.DATA.DATAPATH
     )
-    module = import_module("tasks")
-    print(data_args.task_name)
-    token_classification_task_clazz = getattr(module, "POS")
-    token_classification_task: TokenClassificationTask = token_classification_task_clazz()
-    labels = token_classification_task.get_labels(None)
-    label_map: Dict[int, str] = {i: label for i, label in enumerate(labels)}
-    num_labels = len(labels)
-    print(f"labels:{labels}")
+
     # Load pretrained model and tokenizer
     #
     # Distributed training:
     # The .from_pretrained methods guarantee that only one local process can concurrently
     # download model & vocab.
 
-    config = AutoConfig.from_pretrained(
-        model_args.config_name if model_args.config_name else model_args.model_name_or_path,
-        num_labels=num_labels,
-        id2label=label_map,
-        label2id={label: i for i, label in enumerate(labels)},
-        cache_dir=model_args.cache_dir,
-    )
-
-    if ckpt_path is not None:
-        model = AutoModelForTokenClassification.from_pretrained(
-            ckpt_path
-        )
-    else:
-        model = AutoModelForTokenClassification.from_pretrained(
-            model_args.model_name_or_path,
-            config=config,
-            cache_dir=model_args.cache_dir,
-        )
+    config, token_classification_task, labels, label_map = get_pos_config(cfg, model_args)
 
     # Get datasets
     train_dataset = (

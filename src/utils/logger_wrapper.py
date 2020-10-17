@@ -32,7 +32,7 @@ class Logger(logging.Logger):
         self.addHandler(filehandler)
 
     def mute(self):
-        logger.setLevel(logging.ERROR)
+        self.setLevel(logging.ERROR)
 
 logger = Logger(
     name="BERT-repr", level=logging.INFO, format="%(asctime)-15s %(message)s"

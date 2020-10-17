@@ -4,11 +4,9 @@ from typing import List, TextIO, Union
 
 from conllu import parse_incr
 
-from utils_ner import InputExample, Split, TokenClassificationTask
+from src.utils.utils_ner import InputExample, Split, TokenClassificationTask
 
-
-logger = logging.getLogger(__name__)
-
+from src.utils import logger
 
 class NER(TokenClassificationTask):
     def __init__(self, label_idx=-1):
