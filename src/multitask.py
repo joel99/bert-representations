@@ -218,18 +218,19 @@ def run_multitask(cfg, model_args, training_args, tokenizer, mode="train", *args
         trainer.train()
     if mode == "eval":
         # *nb It'd be tough to use compute_metrics, as it expects individual EvalPredictions and we'd need to aggregate appropriately. We just extract
-        print("Evaluating")
-        # TODO -- can we put this in the compute metrics func?
         # Print individual evaluations
         preds_dict = {}
         for task_name in cfg.TASK.TASKS:
+            split_key = "validation"
+            if task_name == "mnli":
+                split_key = "validation_matched"
             eval_dataloader = DataLoaderWithTaskname(
                 task_name,
-                trainer.get_eval_dataloader(eval_dataset=features_dict[task_name]["validation"])
+                trainer.get_eval_dataloader(eval_dataset=features_dict[task_name][split_key])
             )
             preds_dict[task_name] = trainer.prediction_loop( # ! careful, I changed the method
                 eval_dataloader,
                 description=f"Validation: {task_name}",
             )
         print(preds_dict)
-        json.dump(preds_dict, cfg.EVAL.SAVE_FN.format(""))
+        json.dump(preds_dict, cfg.EVAL.SAVE_FN.format(model_args.model_name_or_path))

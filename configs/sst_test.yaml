@@ -2,6 +2,7 @@ DATA:
     DATAPATH: "/srv/share/svanga3/bert-representations/all_datasets"
 TRAIN:
     NUM_EPOCHS_PER_TASK: 1
+    CHECKPOINT_INTERVAL: 2000
 TASK:
     TASKS:
         - sst_2
