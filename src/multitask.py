@@ -3,8 +3,7 @@ import os.path as osp
 import numpy as np
 import torch
 import torch.nn as nn
-import json
-import dataclasses
+from collections import defaultdict
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler
@@ -30,7 +29,17 @@ class MultitaskModel(transformers.PreTrainedModel):
         self.taskmodels_dict = nn.ModuleDict(taskmodels_dict)
 
     @classmethod
-    def create(cls, model_args, model_type_dict, model_config_dict):
+    def _extract_task_weights(cls, total_state_dict, task_name):
+        r""" Get the weights to load a single task"""
+        prefix_str = f"taskmodels_dict.{task_name}."
+        task_weights = {
+            k[len(prefix_str):]: v for
+            k, v in total_state_dict.items() if k.startswith(prefix_str)
+        }
+        return task_weights
+
+    @classmethod
+    def create(cls, model_args, model_type_dict, model_config_dict, config):
         """
         This creates a MultitaskModel using the model class and config objects
         from single-task models.
@@ -40,16 +49,25 @@ class MultitaskModel(transformers.PreTrainedModel):
         """
         shared_encoder = None
         taskmodels_dict = {}
+        is_ckpt = osp.exists(model_args.model_name_or_path)
+        if is_ckpt:
+            # Loading an existing model -- be careful. Following PretrainedModel loading scheme.
+            # Note that we save redundant weights (just due to this architecture's setup)
+            # We'll overwrite the central encoder repeatedly, as we
+            total_state_dict = torch.load(osp.join(model_args.model_name_or_path, "pytorch_model.bin"), map_location="cpu")
+
         for task_name, model_type in model_type_dict.items():
             model = model_type.from_pretrained(
-                model_args.model_name_or_path,
+                config.MODEL.BASE,
                 config=model_config_dict[task_name],
+                state_dict=cls._extract_task_weights(total_state_dict, task_name) if is_ckpt else None
             )
             if shared_encoder is None:
                 shared_encoder = getattr(model, "bert")
             else:
                 setattr(model, "bert", shared_encoder)
             taskmodels_dict[task_name] = model
+
         return cls(encoder=shared_encoder, taskmodels_dict=taskmodels_dict)
 
     def forward(self, task_name, **kwargs):
@@ -69,6 +87,7 @@ def create_multitask_model(model_args, config: CN):
         model_args=model_args,
         model_type_dict=model_types,
         model_config_dict=model_configs,
+        config=config
     )
 
 def NLPDataCollator(features: List[Union[InputDataClass, Dict]]) -> Dict[str, torch.Tensor]:

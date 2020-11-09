@@ -146,22 +146,3 @@ def load_features_dict(tokenizer, cfg):
             )
             # print(task_name, phase, len(phase_dataset), len(features_dict[task_name][phase]))
     return features_dict
-
-
-
-# Evaluation
-def eval_glue(task_name, predictions, labels):
-    return nlp.load_metric("glue", name=task_name).compute(
-        np.argmax(predictions, axis=1), labels
-    )
-
-def eval_pos(predictions, labels):
-    # TODO
-    return 1
-
-EVAL_MAP = {
-    "pos": eval_pos,
-    "mnli": lambda p, l: eval_glue("mnli", p, l),
-    "sts_b": lambda p, l: eval_glue("sts_b", p, l),
-    "sst_2": lambda p, l: eval_glue("sst_2", p, l),
-}

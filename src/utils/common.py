@@ -58,19 +58,24 @@ def default_tbdir() -> str:
 
 def compute_glue_eval_metrics(task_name: str, p: EvalPrediction) -> Dict:
     preds = np.argmax(p.predictions, axis=1)
-    return glue_compute_metrics(TASK_KEY_TO_NAME[task_name], preds, p.label_ids)
+    return glue_compute_metrics(task_name, preds, p.label_ids)
 
 def compute_glue_eval_metrics_regression(task_name: str, p: EvalPrediction) -> Dict:
     preds = np.squeeze(p.predictions)
-    return glue_compute_metrics(TASK_KEY_TO_NAME[task_name], preds, p.label_ids)
+    return glue_compute_metrics(task_name, preds, p.label_ids)
 
+# TODO add pos
+def compute_pos_metrics(p: EvalPrediction) -> Dict:
+    return 0
 
 EVAL_METRICS_FUNC_DICT = {
-    'sts-b': lambda p: compute_glue_eval_metrics_regression('sts-b', p)
+    'sts-b': lambda p: compute_glue_eval_metrics_regression('sts-b', p),
+    'POS': compute_pos_metrics
 }
 
-def get_eval_metrics_func(task_name) -> Dict:
+def get_eval_metrics_func(task_key) -> Dict:
     r""" Wrapper for all tasks """
+    task_name = TASK_KEY_TO_NAME[task_key]
     if task_name in EVAL_METRICS_FUNC_DICT:
         return EVAL_METRICS_FUNC_DICT[task_name]
     else:
@@ -84,5 +89,4 @@ TASK_KEY_TO_NAME = {
     "sts_b": "sts-b",
     "sst_2": "sst-2",
     "pos": "POS",
-    # ! ADD DP @ Ayush
 }
