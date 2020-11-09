@@ -72,7 +72,7 @@ class TokenClassificationTask:
     def get_labels(self, path: str) -> List[str]:
         raise NotImplementedError
 
-    def convert_examples_to_features(
+def convert_examples_to_features(
         self,
         examples: List[InputExample],
         label_list: List[str],
@@ -199,8 +199,6 @@ class TokenClassificationTask:
                 )
             )
         return features
-
-
 class TokenClassificationDataset(Dataset):
     """
     This will be superseded by a framework-agnostic approach
@@ -242,7 +240,7 @@ class TokenClassificationDataset(Dataset):
                 # ?
                 examples = token_classification_task.read_examples_from_file(data_dir, mode)
                 # TODO clean up all this to leverage built-in features of tokenizers
-                self.features = token_classification_task.convert_examples_to_features(
+                self.features = convert_examples_to_features(
                     examples,
                     labels,
                     max_seq_length,

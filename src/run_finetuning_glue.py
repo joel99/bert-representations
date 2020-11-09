@@ -31,10 +31,10 @@ def run_glue(task_key, cfg, model, model_args, training_args, tokenizer, mode="t
     glue_dataset = load_features_dict(tokenizer, cfg)
     # print(glue_dataset.keys())
     train_dataset = glue_dataset[task_key]['train']
-    if task_key == "mnli":
-        eval_dataset = glue_dataset[task_key]['validation_matched']
-    else:
-        eval_dataset = glue_dataset[task_key]['validation']
+    split_key = cfg.EVAL.SPLIT
+    if task_name == "mnli":
+        split_key = f"{split_key}_matched"
+    eval_dataset = glue_dataset[task_key][split_key]
     # eval_dataset = glue_dataset[task_key]['validation_mismached']
     # train_dataset = GlueDataset(data_args, tokenizer=tokenizer, limit_length=cfg.TRAIN.TASK_LIMIT)
     # eval_dataset = GlueDataset(data_args, tokenizer=tokenizer, mode='dev')

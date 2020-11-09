@@ -33,16 +33,16 @@ dataset_dict = {
     # Keyd by task key
     "stsb": nlp.load_dataset('glue', name="stsb", cache_dir="/srv/share/svanga3/bert-representations/nlp_datasets/glue_data/stsb"),
     "sst2": nlp.load_dataset('glue', name="sst2", cache_dir="/srv/share/svanga3/bert-representations/nlp_datasets/glue_data/sst2"),
-    "mnli": nlp.load_dataset('glue', name="mnli", cache_dir="/srv/share/svanga3/bert-representations/nlp_datasets/glue_data/MNLI"),
+    # "mnli": nlp.load_dataset('glue', name="mnli", cache_dir="/srv/share/svanga3/bert-representations/nlp_datasets/glue_data/MNLI"),
     # "pos": nlp.load_dataset('conll2003', cache_dir="/srv/share/svanga3/bert-representations/nlp_datasets/POS/"),
 }
 #%%
 
 for task_name, dataset in dataset_dict.items():
     print(task_name)
-    batch = dataset_dict[task_name]["train"][0]
+    batch = dataset_dict[task_name]["validation"]
     print(batch)
-    print(tokenizer.batch_encode_plus(batch))
+    # print(tokenizer.batch_encode_plus(batch))
     print()
 
 #%%

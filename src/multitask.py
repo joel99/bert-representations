@@ -1,5 +1,5 @@
 # Src: https://colab.research.google.com/github/zphang/zphang.github.io/blob/master/files/notebooks/Multi_task_Training_with_Transformers_NLP.ipynb
-
+import os.path as osp
 import numpy as np
 import torch
 import torch.nn as nn
@@ -15,7 +15,7 @@ import transformers
 from transformers.data.data_collator import DataCollator, InputDataClass, default_data_collator
 import datasets as nlp
 
-from src.registry import get_model_type, get_config, load_features_dict
+from src.registry import get_model_type, get_config, load_features_dict, EVAL_MAP
 from src.utils import ModelArguments
 
 class MultitaskModel(transformers.PreTrainedModel):
@@ -220,10 +220,11 @@ def run_multitask(cfg, model_args, training_args, tokenizer, mode="train", *args
         # *nb It'd be tough to use compute_metrics, as it expects individual EvalPredictions and we'd need to aggregate appropriately. We just extract
         # Print individual evaluations
         preds_dict = {}
+        split_key="validation"
         for task_name in cfg.TASK.TASKS:
-            split_key = "validation"
+            split_key = cfg.EVAL.SPLIT
             if task_name == "mnli":
-                split_key = "validation_matched"
+                split_key = f"{split_key}_matched"
             eval_dataloader = DataLoaderWithTaskname(
                 task_name,
                 trainer.get_eval_dataloader(eval_dataset=features_dict[task_name][split_key])
@@ -232,5 +233,11 @@ def run_multitask(cfg, model_args, training_args, tokenizer, mode="train", *args
                 eval_dataloader,
                 description=f"Validation: {task_name}",
             )
-        print(preds_dict)
-        json.dump(preds_dict, cfg.EVAL.SAVE_FN.format(model_args.model_name_or_path))
+        with open(osp.join('./eval/', cfg.EVAL.SAVE_FN.format(f"{cfg.VARIANT}_{osp.split(model_args.model_name_or_path)[1]}_{split_key}")), 'w') as f:
+            json.dump(preds_dict, f)
+
+        for task_name in cfg.TASK.TASKS:
+            evaluation = EVAL_MAP[task_name](
+                preds_dict[task_name].predictions, preds_dict[task_name].label_ids
+            )
+            print(task_name, evaluation)

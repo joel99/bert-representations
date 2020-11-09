@@ -90,6 +90,7 @@ _C.TRAIN.EVAL_STEPS = 1000
 _C.EVAL = CN()
 _C.EVAL.BATCH_SIZE = 128
 _C.EVAL.SAVE_FN = "{}.eval"
+_C.EVAL.SPLIT = "validation" # There's no support for test! We'll just crash because there are no labels
 
 def get_cfg_defaults():
   """Get default LFADS config (yacs config node)."""

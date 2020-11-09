@@ -57,6 +57,11 @@ def get_parser():
     )
 
     parser.add_argument(
+        '--eval-split', '-es',
+        default="validation",
+    )
+
+    parser.add_argument(
         "opts",
         default=None,
         nargs=argparse.REMAINDER,
@@ -78,7 +83,7 @@ def check_exists(path, preserve=DO_PRESERVE_RUNS):
         return True
     return False
 
-def prepare_config(exp_config: Union[List[str], str], run_type: str, ckpt_path="", run_id=None, opts=None) -> None:
+def prepare_config(exp_config: Union[List[str], str], run_type: str, ckpt_path="", run_id=None, eval_split=None, opts=None) -> None:
     r"""Prepare config node / do some preprocessing
 
     Args:
@@ -97,6 +102,7 @@ def prepare_config(exp_config: Union[List[str], str], run_type: str, ckpt_path="
     if opts is None:
         opts = []
     opts.extend(working_dir)
+    opts.extend(['EVAL.SPLIT', eval_split])
     config = get_config(exp_config, opts)
 
     # Default behavior is to pull experiment name from config file
@@ -126,8 +132,8 @@ def prepare_config(exp_config: Union[List[str], str], run_type: str, ckpt_path="
 
     return config, ckpt_path
 
-def run_exp(exp_config: Union[List[str], str], run_type: str, ckpt_path="", run_id=None, opts=None) -> None:
-    config, ckpt_path = prepare_config(exp_config, run_type, ckpt_path, run_id, opts)
+def run_exp(exp_config: Union[List[str], str], run_type: str, ckpt_path="", run_id=None, eval_split=None, opts=None) -> None:
+    config, ckpt_path = prepare_config(exp_config, run_type, ckpt_path, run_id, eval_split, opts)
 
     logfile_path = osp.join(config.LOG_DIR, f"{config.VARIANT}.log")
     logger.add_filehandler(logfile_path)

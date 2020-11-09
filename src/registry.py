@@ -2,6 +2,7 @@
 # Registry e.g. for config
 # * We use this abstraction so that multi-task models can be init-ed simply
 
+import numpy as np
 from yacs.config import CfgNode as CN
 
 import transformers
@@ -31,7 +32,6 @@ CONFIG_MAP = {
     "mnli": get_glue_config,
     "sts_b": get_glue_config,
     "sst_2": get_glue_config,
-    # ! Add DP
 }
 
 def get_config(task_key: str, cfg: CN, model_args):
@@ -109,14 +109,14 @@ convert_func_dict = {
     "sts_b": convert_to_stsb_features, # Ok, either use theirs, or ours. Um.
     "sst_2": convert_to_sst2_features,
     "mnli": convert_to_mnli_features,
-    # "pos": convert_to_pos_features
+    "pos": convert_to_pos_features
 }
 
 columns_dict = {
     "sst_2": ['input_ids', 'attention_mask', 'labels'],
     "sts_b": ['input_ids', 'attention_mask', 'labels'],
     "mnli": ['input_ids', 'attention_mask', 'labels'],
-    # "pos": ['input_ids', 'attention_mask', 'labels'],
+    "pos": ['input_ids', 'attention_mask', 'labels'],
 }
 
 def load_features_dict(tokenizer, cfg):
@@ -137,7 +137,7 @@ def load_features_dict(tokenizer, cfg):
                 lambda x: convert_func_dict[task_name](cfg, tokenizer, x),
                 batched=True,
                 load_from_cache_file=True,
-                cache_file_name=f"/srv/share/svanga3/bert-representations/nlp_datasets/cached_batches/{task_name}.cache"
+                cache_file_name=f"/srv/share/svanga3/bert-representations/nlp_datasets/cached_batches/{task_name}_{phase}.cache"
             )
             print(task_name, phase, len(phase_dataset), len(features_dict[task_name][phase]))
             features_dict[task_name][phase].set_format(
@@ -147,3 +147,21 @@ def load_features_dict(tokenizer, cfg):
             # print(task_name, phase, len(phase_dataset), len(features_dict[task_name][phase]))
     return features_dict
 
+
+
+# Evaluation
+def eval_glue(task_name, predictions, labels):
+    return nlp.load_metric("glue", name=task_name).compute(
+        np.argmax(predictions, axis=1), labels
+    )
+
+def eval_pos(predictions, labels):
+    # TODO
+    return 1
+
+EVAL_MAP = {
+    "pos": eval_pos,
+    "mnli": lambda p, l: eval_glue("mnli", p, l),
+    "sts_b": lambda p, l: eval_glue("sts_b", p, l),
+    "sst_2": lambda p, l: eval_glue("sst_2", p, l),
+}

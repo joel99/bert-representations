@@ -63,11 +63,11 @@ def get_runner_func(
         TODO: bind task config only
     """
     model_args = ModelArguments(
-        model_name_or_path=cfg.MODEL.BASE,
+        model_name_or_path=cfg.MODEL.BASE if checkpoint_path is None else checkpoint_path,
     )
 
     tokenizer = AutoTokenizer.from_pretrained(
-        model_args.model_name_or_path,
+        cfg.MODEL.BASE,
     )
 
     assert len(cfg.TASK.TASKS) > 0, "requires positive number of tasks"
