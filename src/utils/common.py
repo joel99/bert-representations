@@ -58,11 +58,11 @@ def default_tbdir() -> str:
 
 def compute_glue_eval_metrics(task_name: str, p: EvalPrediction) -> Dict:
     preds = np.argmax(p.predictions, axis=1)
-    return glue_compute_metrics(task_name, preds, p.label_ids)
+    return glue_compute_metrics(TASK_KEY_TO_NAME[task_name], preds, p.label_ids)
 
 def compute_glue_eval_metrics_regression(task_name: str, p: EvalPrediction) -> Dict:
     preds = np.squeeze(p.predictions)
-    return glue_compute_metrics(task_name, preds, p.label_ids)
+    return glue_compute_metrics(TASK_KEY_TO_NAME[task_name], preds, p.label_ids)
 
 
 EVAL_METRICS_FUNC_DICT = {

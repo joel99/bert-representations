@@ -15,8 +15,8 @@ import transformers
 from transformers.data.data_collator import DataCollator, InputDataClass, default_data_collator
 import datasets as nlp
 
-from src.registry import get_model_type, get_config, load_features_dict, EVAL_MAP
-from src.utils import ModelArguments
+from src.registry import get_model_type, get_config, load_features_dict
+from src.utils import ModelArguments, get_eval_metrics_func
 
 class MultitaskModel(transformers.PreTrainedModel):
     def __init__(self, encoder, taskmodels_dict):
@@ -220,7 +220,7 @@ def run_multitask(cfg, model_args, training_args, tokenizer, mode="train", *args
         # *nb It'd be tough to use compute_metrics, as it expects individual EvalPredictions and we'd need to aggregate appropriately. We just extract
         # Print individual evaluations
         preds_dict = {}
-        split_key="validation"
+        split_key = "validation"
         for task_name in cfg.TASK.TASKS:
             split_key = cfg.EVAL.SPLIT
             if task_name == "mnli":
@@ -233,11 +233,9 @@ def run_multitask(cfg, model_args, training_args, tokenizer, mode="train", *args
                 eval_dataloader,
                 description=f"Validation: {task_name}",
             )
-        with open(osp.join('./eval/', cfg.EVAL.SAVE_FN.format(f"{cfg.VARIANT}_{osp.split(model_args.model_name_or_path)[1]}_{split_key}")), 'w') as f:
-            json.dump(preds_dict, f)
-
+        predictions_file = osp.join('./eval/', cfg.EVAL.SAVE_FN.format(f"{cfg.VARIANT}_{osp.split(model_args.model_name_or_path)[1]}_{split_key}"))
+        torch.save(preds_dict, predictions_file)
         for task_name in cfg.TASK.TASKS:
-            evaluation = EVAL_MAP[task_name](
-                preds_dict[task_name].predictions, preds_dict[task_name].label_ids
-            )
+            evaluator = get_eval_metrics_func(task_name)
+            evaluation = evaluator(preds_dict[task_name])
             print(task_name, evaluation)
