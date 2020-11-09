@@ -1,23 +1,54 @@
 # Src: https://colab.research.google.com/github/zphang/zphang.github.io/blob/master/files/notebooks/Multi_task_Training_with_Transformers_NLP.ipynb
-
+#%%
 import numpy as np
 import torch
 import torch.nn as nn
-import json
-import dataclasses
+
 from torch.utils.data.dataloader import DataLoader
+from transformers.trainer import get_tpu_sampler
+from transformers.data.data_collator import DataCollator, InputDataClass, default_data_collator
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler
 from typing import List, Union, Dict
-from yacs.config import CfgNode as CN
 
 import transformers
-from transformers.data.data_collator import DataCollator, InputDataClass, default_data_collator
 import datasets as nlp
+from yacs.config import CfgNode as CN
 
-from src.registry import get_model_type, get_config, load_features_dict
+import os
+import os.path as osp
+
+import sys
+module_path = os.path.abspath(os.path.join('..'))
+if module_path not in sys.path:
+    sys.path.append(module_path)
+
+
+from src.registry import get_model_type, get_config
 from src.utils import ModelArguments
 
+
+#%%
+dataset_dict = {
+    # Keyd by task key
+    "stsb": nlp.load_dataset('glue', name="stsb", cache_dir="/srv/share/svanga3/bert-representations/nlp_datasets/glue_data/stsb"),
+    "sst2": nlp.load_dataset('glue', name="sst2", cache_dir="/srv/share/svanga3/bert-representations/nlp_datasets/glue_data/sst2"),
+    "mnli": nlp.load_dataset('glue', name="mnli", cache_dir="/srv/share/svanga3/bert-representations/nlp_datasets/glue_data/MNLI"),
+    # "pos": nlp.load_dataset('conll2003', cache_dir="/srv/share/svanga3/bert-representations/nlp_datasets/POS/"),
+}
+#%%
+
+for task_name, dataset in dataset_dict.items():
+    print(task_name)
+    batch = dataset_dict[task_name]["train"][0]
+    print(batch)
+    print(tokenizer.batch_encode_plus(batch))
+    print()
+
+#%%
+batch = dataset_dict['pos']['train'][:3]
+print(tokenizer(batch['words']))
+#%%
 class MultitaskModel(transformers.PreTrainedModel):
     def __init__(self, encoder, taskmodels_dict):
         """
@@ -37,6 +68,7 @@ class MultitaskModel(transformers.PreTrainedModel):
 
         We do this by creating each single-task model, and having them share
         the same encoder transformer.
+        # TODO hook this up with our checkpoints
         """
         shared_encoder = None
         taskmodels_dict = {}
@@ -46,31 +78,134 @@ class MultitaskModel(transformers.PreTrainedModel):
                 config=model_config_dict[task_name],
             )
             if shared_encoder is None:
-                shared_encoder = getattr(model, "bert")
+                shared_encoder = getattr(model, cls.get_encoder_attr_name(model))
             else:
-                setattr(model, "bert", shared_encoder)
+                setattr(model, cls.get_encoder_attr_name(model), shared_encoder)
             taskmodels_dict[task_name] = model
         return cls(encoder=shared_encoder, taskmodels_dict=taskmodels_dict)
+
+    @classmethod
+    def get_encoder_attr_name(cls, model):
+        """
+        The encoder transformer is named differently in each model "architecture".
+        This method lets us get the name of the encoder attribute
+        """
+        model_class_name = model.__class__.__name__
+        if model_class_name.startswith("Bert"):
+            return "bert"
+        elif model_class_name.startswith("Roberta"):
+            return "roberta"
+        elif model_class_name.startswith("Albert"):
+            return "albert"
+        else:
+            raise KeyError(f"Add support for new model {model_class_name}")
 
     def forward(self, task_name, **kwargs):
         return self.taskmodels_dict[task_name](**kwargs)
 
-def create_multitask_model(model_args, config: CN):
-    # if checkpoint_path is not None:
-    #     # Since there is no diff b/n loading TokenClassifiers and SequenceClassifiers, we can just call BertPreTrainedModel
-    #     return BertPretrainedModel.from_pretrained(checkpoint_path) # fingers crossed
+def create_multitask_model(config: CN):
+    # More piping of our config to model config
+    # ! Support checkpointing?
+    model_args = ModelArguments(
+        model_name_or_path=config.MODEL.BASE,
+    )
 
+    # Models are initialized either with Transformers configs or paths
     model_types = {}
     model_configs = {}
     for task in config.TASK.TASKS:
         model_types[task] = get_model_type(task, config)
-        model_configs[task] = get_config(task, config, model_args)[0]
+        model_configs[task] = get_config(task, config, model_args)
     return MultitaskModel.create(
         model_args=model_args,
         model_type_dict=model_types,
         model_config_dict=model_configs,
     )
 
+#%%
+from src.config.default import get_config as get_yacs_cfg
+config = get_yacs_cfg('../configs/mnli_test.yaml', None)
+
+multitask_model = create_multitask_model(config)
+print(multitask_model.encoder.embeddings.word_embeddings.weight.data_ptr())
+#%%
+print(multitask_model.taskmodels_dict['mnli'].bert.embeddings.word_embeddings.weight.data_ptr())
+# print(multitask_model.taskmodels_dict["stsb"].bert.embeddings.word_embeddings.weight.data_ptr())
+# print(multitask_model.taskmodels_dict["rte"].bert.embeddings.word_embeddings.weight.data_ptr())
+# print(multitask_model.taskmodels_dict["commonsense_qa"].bert.embeddings.word_embeddings.weight.data_ptr())
+
+#%%
+# ---
+# Data and dataloading
+# ---
+max_length = 128
+tokenizer = transformers.AutoTokenizer.from_pretrained('bert-base-uncased') # we'll have this already
+
+# Taking at face value that we need to encode like so for NLP to work properly
+def convert_to_stsb_features(example_batch):
+    inputs = list(zip(example_batch['sentence1'], example_batch['sentence2']))
+    features = tokenizer.batch_encode_plus(
+        inputs, max_length=max_length, pad_to_max_length=True
+    )
+    features["labels"] = example_batch["label"]
+    return features
+
+def convert_to_mnli_features(example_batch):
+    inputs = list(zip(example_batch['hypothesis'], example_batch['premise']))
+    features = tokenizer.batch_encode_plus(
+        inputs, max_length=max_length, pad_to_max_length=True
+    )
+    features["labels"] = example_batch["label"]
+    return features
+
+def convert_to_sst2_features(example_batch):
+    features = tokenizer.batch_encode_plus(
+        example_batch["sentence"], max_length=max_length, pad_to_max_length=True
+    )
+    features["labels"] = example_batch["label"]
+    return features
+
+def convert_to_pos_features(example_batch):
+    # This is the most naive guess, `utils_ner` suggest the actual procedure is harder
+    # TODO use the utils_ner conversion -- it'll also process the labels correctly..
+    features = tokenizer(example_batch['words'])
+    features["labels"] = example_batch["pos"]
+    return features
+
+convert_func_dict = {
+    "stsb": convert_to_stsb_features,
+    "sst2": convert_to_sst2_features,
+    "mnli": convert_to_mnli_features,
+    # "pos": convert_to_pos_features
+}
+
+
+#%% get cached features
+columns_dict = {
+    "sst2": ['input_ids', 'attention_mask', 'labels'],
+    "stsb": ['input_ids', 'attention_mask', 'labels'],
+    "mnli": ['input_ids', 'attention_mask', 'labels'],
+    # "pos": ['input_ids', 'attention_mask', 'labels'],
+}
+
+features_dict = {}
+for task_name, dataset in dataset_dict.items():
+    features_dict[task_name] = {}
+    for phase, phase_dataset in dataset.items():
+        features_dict[task_name][phase] = phase_dataset.map(
+            convert_func_dict[task_name],
+            batched=True,
+            load_from_cache_file=True,
+            cache_file_name=f"/srv/share/svanga3/bert-representations/nlp_datasets/cached_batches/{task_name}.cache"
+        )
+        print(task_name, phase, len(phase_dataset), len(features_dict[task_name][phase]))
+        features_dict[task_name][phase].set_format(
+            type="torch",
+            columns=columns_dict[task_name],
+        )
+        print(task_name, phase, len(phase_dataset), len(features_dict[task_name][phase]))
+
+#%%
 def NLPDataCollator(features: List[Union[InputDataClass, Dict]]) -> Dict[str, torch.Tensor]:
     """
     Extending the existing DataCollator to work with NLP dataset batches
@@ -92,6 +227,7 @@ def NLPDataCollator(features: List[Union[InputDataClass, Dict]]) -> Dict[str, to
     else:
         # otherwise, revert to using the default collate_batch
         return default_data_collator(features)
+
 
 class StrIgnoreDevice(str):
     """
@@ -183,7 +319,7 @@ class MultitaskTrainer(transformers.Trainer):
               train_dataset,
               batch_size=self.args.train_batch_size,
               sampler=train_sampler,
-              collate_fn=self.data_collator,
+              collate_fn=self.data_collator.collate_batch,
             ),
         )
 
@@ -201,35 +337,5 @@ class MultitaskTrainer(transformers.Trainer):
         })
 
 
-def run_multitask(cfg, model_args, training_args, tokenizer, mode="train", *args, **kwargs):
-    multitask_model = create_multitask_model(model_args, cfg)
-    features_dict = load_features_dict(tokenizer, cfg)
-    train_dataset = {
-        task_name: dataset["train"]
-        for task_name, dataset in features_dict.items()
-    }
-    trainer = MultitaskTrainer(
-        model=multitask_model,
-        args=training_args,
-        data_collator=NLPDataCollator,
-        train_dataset=train_dataset
-    )
-    if mode == "train":
-        trainer.train()
-    if mode == "eval":
-        # *nb It'd be tough to use compute_metrics, as it expects individual EvalPredictions and we'd need to aggregate appropriately. We just extract
-        print("Evaluating")
-        # TODO -- can we put this in the compute metrics func?
-        # Print individual evaluations
-        preds_dict = {}
-        for task_name in cfg.TASK.TASKS:
-            eval_dataloader = DataLoaderWithTaskname(
-                task_name,
-                trainer.get_eval_dataloader(eval_dataset=features_dict[task_name]["validation"])
-            )
-            preds_dict[task_name] = trainer.prediction_loop( # ! careful, I changed the method
-                eval_dataloader,
-                description=f"Validation: {task_name}",
-            )
-        print(preds_dict)
-        json.dump(preds_dict, cfg.EVAL.SAVE_FN.format(""))
+#%%
+# Now do it with POS

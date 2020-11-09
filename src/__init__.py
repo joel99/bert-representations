@@ -14,6 +14,7 @@ from src.utils import (
 from src.run_finetuning_pos import run_pos
 from src.run_finetuning_glue import run_glue
 from src.registry import get_model
+from src.multitask import run_multitask
 # init depends on common
 # finetuning depnds on cmmon
 # common depends on finetuning
@@ -26,17 +27,17 @@ TASK_DICT = {
     "pos": run_pos,
     "sts_b": run_glue,
     "sst_2": run_glue
-    # ! ADD DP @ Ayush
 }
 
 MULTITASK_STRATEGIES = { "SEQUENTIAL", "ROUND_ROBIN" }
 
 def make_training_args(cfg, checkpoint_path=None):
+    is_multitasking = len(cfg.TASK.TASKS) > 1 and cfg.TASK.MULTITASK_STRATEGY != "SEQUENTIAL"
     return TrainingArguments(
         output_dir=cfg.MODEL_DIR,
         overwrite_output_dir=checkpoint_path is not None, # ? uncertain about this
         do_train=True,
-        do_eval=True,
+        do_eval=not is_multitasking and cfg.TRAIN.DO_VAL,
         per_device_train_batch_size=cfg.TRAIN.BATCH_SIZE,
         per_device_eval_batch_size=cfg.EVAL.BATCH_SIZE,
         num_train_epochs=cfg.TRAIN.NUM_EPOCHS_PER_TASK,
@@ -45,7 +46,7 @@ def make_training_args(cfg, checkpoint_path=None):
         logging_first_step=True,
         logging_dir=cfg.TENSORBOARD_DIR,
         save_steps=cfg.TRAIN.CHECKPOINT_INTERVAL,
-        evaluate_during_training=cfg.TRAIN.DO_VAL,
+        evaluate_during_training=not is_multitasking and cfg.TRAIN.DO_VAL,
         learning_rate=cfg.TRAIN.LR_INIT,
         weight_decay=cfg.TRAIN.WEIGHT_DECAY,
         eval_steps=cfg.TRAIN.EVAL_STEPS,
@@ -95,6 +96,7 @@ def get_runner_func(
     assert cfg.TASK.MULTITASK_STRATEGY in MULTITASK_STRATEGIES
     if cfg.TASK.MULTITASK_STRATEGY == "SEQUENTIAL":
         def sequential_evaluation(*args, **kwargs):
+            # ! Teardown, since this doesn't support different model types
             task_checkpoint = checkpoint_path
             for i, task in enumerate(cfg.TASK.TASKS):
                 # Update configs to use subdirectories, to enable intermediate task analysis.
@@ -122,8 +124,15 @@ def get_runner_func(
 
         return sequential_evaluation
     if cfg.TASK.MULTITASK_STRATEGY == "ROUND_ROBIN":
-        # TODO Load all datasets
-        for task_name, dataset in dataset_dict.items():
-            print(task_name)
-            print(dataset_dict[task_name]["train"][0])
-            print()
+        training_args = make_training_args(cfg, checkpoint_path=checkpoint_path)
+        def bound_multitask(*args, **kwargs):
+            run_multitask(
+                cfg,
+                model_args,
+                training_args,
+                tokenizer,
+                mode=mode,
+                checkpoint_path=checkpoint_path,
+                *args,
+                **kwargs)
+        return bound_multitask

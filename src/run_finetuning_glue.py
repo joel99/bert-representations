@@ -6,15 +6,15 @@ from transformers import AutoConfig, AutoModelForSequenceClassification, GlueDat
 from transformers import GlueDataTrainingArguments as DataTrainingArguments
 from transformers import (
     Trainer,
-    glue_tasks_num_labels,
 )
-
+import transformers
+# transformers.logging.set_verbosity_info()
 from src.utils import (
     logger,
     get_eval_metrics_func,
     TASK_KEY_TO_NAME,
 )
-from src.registry import get_model
+from src.registry import get_model, load_features_dict
 
 def run_glue(task_key, cfg, model, model_args, training_args, tokenizer, mode="train"):
     r"""
@@ -28,8 +28,16 @@ def run_glue(task_key, cfg, model, model_args, training_args, tokenizer, mode="t
         data_dir=cfg.DATA.DATAPATH
     )
 
-    train_dataset = GlueDataset(data_args, tokenizer=tokenizer, limit_length=100_000)
-    eval_dataset = GlueDataset(data_args, tokenizer=tokenizer, mode='dev')
+    glue_dataset = load_features_dict(tokenizer, cfg)
+    # print(glue_dataset.keys())
+    train_dataset = glue_dataset[task_key]['train']
+    if task_key == "mnli":
+        eval_dataset = glue_dataset[task_key]['validation_matched']
+    else:
+        eval_dataset = glue_dataset[task_key]['validation']
+    # eval_dataset = glue_dataset[task_key]['validation_mismached']
+    # train_dataset = GlueDataset(data_args, tokenizer=tokenizer, limit_length=cfg.TRAIN.TASK_LIMIT)
+    # eval_dataset = GlueDataset(data_args, tokenizer=tokenizer, mode='dev')
 
     trainer = Trainer(
         model=model,

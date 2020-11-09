@@ -27,7 +27,7 @@ def get_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--run-type",
-        choices=["train", "eval",], # ! Eval not supported
+        choices=["train", "eval",],
         required=True,
         help="run type of the experiment (train or eval)",
     )

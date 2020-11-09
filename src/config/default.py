@@ -71,7 +71,7 @@ _C.DATA.DATAPATH = 'data/'
 # -----------------------------------------------------------------------------
 _C.MODEL = CN()
 _C.MODEL.BASE = "bert-base-uncased" # distilbert-base-cased
-
+_C.MODEL.MAX_LENGTH = 128
 # -----------------------------------------------------------------------------
 # Train Config
 # -----------------------------------------------------------------------------
@@ -79,9 +79,9 @@ _C.TRAIN = CN()
 
 _C.TRAIN.DO_VAL = True # Run validation while training
 _C.TRAIN.BATCH_SIZE = 32
+_C.TRAIN.TASK_LIMIT = 100000 # Not affected
 _C.TRAIN.NUM_EPOCHS_PER_TASK = 1
 _C.TRAIN.NUM_UPDATES_PER_TASK = -1 # Will override num_epochs_per_task if > 0
-
 _C.TRAIN.CHECKPOINT_INTERVAL = 1000 # Num steps per checkpoint
 _C.TRAIN.LOG_INTERVAL = 500
 _C.TRAIN.LR_INIT = 5e-5
@@ -89,6 +89,7 @@ _C.TRAIN.WEIGHT_DECAY = 0.0
 _C.TRAIN.EVAL_STEPS = 1000
 _C.EVAL = CN()
 _C.EVAL.BATCH_SIZE = 128
+_C.EVAL.SAVE_FN = "{}.eval"
 
 def get_cfg_defaults():
   """Get default LFADS config (yacs config node)."""
