@@ -51,7 +51,7 @@ def make_training_args(cfg, checkpoint_path=None):
         warmup_steps=cfg.TRAIN.LR_WARMUP_STEPS,
         weight_decay=cfg.TRAIN.WEIGHT_DECAY,
         eval_steps=cfg.TRAIN.EVAL_STEPS,
-        seed=cfg.SEED
+        seed=cfg.SEED,
     )
 
 def get_runner_func(

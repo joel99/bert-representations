@@ -63,35 +63,6 @@ def run_pos(task_key: str, cfg: CN, model, model_args, training_args, tokenizer,
     train_dataset = pos_dataset["pos"]["train"]
     eval_dataset = pos_dataset["pos"]["validation"]
 
-    # train_dataset = (
-    #     TokenClassificationDataset(
-    #         token_classification_task=token_classification_task,
-    #         data_dir=data_args.data_dir,
-    #         tokenizer=tokenizer,
-    #         labels=labels,
-    #         model_type=config.model_type,
-    #         max_seq_length=data_args.max_seq_length,
-    #         overwrite_cache=data_args.overwrite_cache,
-    #         mode=Split.train,
-    #     )
-    #     if training_args.do_train
-    #     else None
-    # )
-    # eval_dataset = (
-    #     TokenClassificationDataset(
-    #         token_classification_task=token_classification_task,
-    #         data_dir=data_args.data_dir,
-    #         tokenizer=tokenizer,
-    #         labels=labels,
-    #         model_type=config.model_type,
-    #         max_seq_length=data_args.max_seq_length,
-    #         overwrite_cache=data_args.overwrite_cache,
-    #         mode=Split.dev,
-    #     )
-    #     if training_args.do_eval
-    #     else Nones
-    # )
-
     compute_metrics_raw = get_eval_metrics_func(task_name)
     compute_metrics = lambda p: compute_metrics_raw(label_map, p)
 

@@ -16,7 +16,7 @@ import torch.nn as nn
 from transformers import (
     EvalPrediction,
     glue_compute_metrics,
-    PreTrainedTokenizerBase
+    PreTrainedTokenizerBase,
 )
 
 # Some utils for sequential training
@@ -211,8 +211,9 @@ class DataCollatorForTokenClassification:
     """
 
     tokenizer: PreTrainedTokenizerBase
-    padding: Union[bool, str] = True # dropped paddingstrategy
-    max_length: Optional[int] = None
+    # padding: Union[bool, str] = True # "max_length" # Is normally true, not sure how they line things up on evaluation in that case.
+    padding: Union[bool, str] = "max_length" # Is normally true, not sure how they line things up on evaluation in that case.
+    max_length: Optional[int] = 128 # Is normally 512
     pad_to_multiple_of: Optional[int] = None
     label_pad_token_id: int = -100
 

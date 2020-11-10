@@ -132,7 +132,7 @@ def convert_to_pos_features(cfg, tokenizer, examples):
     label_to_id = {l: i for i, l in enumerate(label_list)}
     tokenized_inputs = tokenizer(
         examples["words"],
-        # max_length=cfg.MODEL.MAX_LENGTH,
+        max_length=cfg.MODEL.MAX_LENGTH,
         padding=False, # It'll get padded in the collator
         truncation=True,
         # We use this argument because the texts in our dataset are lists of words (with a label for each word).
@@ -204,7 +204,8 @@ def load_features_dict(tokenizer, cfg):
             print(task_name, phase, len(phase_dataset), len(features_dict[task_name][phase]))
             # TokenCollator doesn't play well with pre-cast tensors
             features_dict[task_name][phase].set_format(
-                type="torch" if task_name != "pos" else None,
+                type=None,
+                # type="torch" if task_name != "pos" else None,
                 columns=columns_dict[task_name],
             )
 

@@ -11,12 +11,13 @@ from typing import List, Union, Dict
 from yacs.config import CfgNode as CN
 
 import transformers
-from transformers.data.data_collator import DataCollator, InputDataClass, default_data_collator
+from transformers.data.data_collator import DataCollator, InputDataClass, DataCollatorWithPadding
 import datasets as nlp
 
 from src.registry import get_model_type, get_config, load_features_dict
 from src.utils import ModelArguments, get_eval_metrics_func, TASK_KEY_TO_NAME, DataCollatorForTokenClassification
 
+# Be careful, many
 class MultitaskModel(transformers.PreTrainedModel):
     def __init__(self, encoder, taskmodels_dict):
         """
@@ -90,30 +91,15 @@ def create_multitask_model(model_args, config: CN):
         config=config
     )
 
-def NLPDataCollator(features: List[Union[InputDataClass, Dict]]) -> Dict[str, torch.Tensor]:
-    """
-    Extending the existing DataCollator to work with NLP dataset batches
-    """
-    first = features[0]
-    if isinstance(first, dict):
-        # NLP data sets current works presents features as lists of dictionary
-        # (one per example), so we  will adapt the collate_batch logic for that
-        if "labels" in first and first["labels"] is not None:
-            # import pdb
-            # pdb.set_trace()
-            if first["labels"].dtype == torch.int64:
-                labels = torch.tensor([f["labels"] for f in features], dtype=torch.long)
-            else:
-                labels = torch.tensor([f["labels"] for f in features], dtype=torch.float)
-            batch = {"labels": labels}
-        for k, v in first.items():
-            if k != "labels" and v is not None and not isinstance(v, str):
-                batch[k] = torch.stack([f[k] for f in features])
-        return batch
-    else:
-        # otherwise, revert to using the default collate_batch
-    # This doesn't seem to be necessary anymore?
-        return default_data_collator(features)
+def TaskDependentCollator(tokenizer):
+    token_collator = DataCollatorForTokenClassification(tokenizer)
+    default_collator = DataCollatorWithPadding(tokenizer)
+    def inner(task_key: str, features: List[Union[InputDataClass, Dict]]) -> Dict[str, torch.Tensor]:
+        if task_key == "pos":
+            return token_collator(features)
+        else:
+            return default_collator(features)
+    return inner
 
 class StrIgnoreDevice(str):
     """
@@ -186,8 +172,7 @@ class MultitaskDataloader:
             yield next(dataloader_iter_dict[task_name])
 
 class MultitaskTrainer(transformers.Trainer):
-
-    def get_single_train_dataloader(self, task_name, train_dataset):
+    def get_single_train_dataloader(self, task_key, train_dataset):
         """
         Create a single-task data loader that also yields task names
         """
@@ -200,12 +185,12 @@ class MultitaskTrainer(transformers.Trainer):
         )
 
         data_loader = DataLoaderWithTaskname(
-            task_name=task_name,
+            task_name=task_key,
             data_loader=DataLoader(
               train_dataset,
               batch_size=self.args.train_batch_size,
               sampler=train_sampler,
-              collate_fn=self.data_collator,
+              collate_fn=lambda f: self.data_collator(task_key, f),
             ),
         )
 
@@ -218,8 +203,8 @@ class MultitaskTrainer(transformers.Trainer):
         task Dataloader
         """
         return MultitaskDataloader({
-            task_name: self.get_single_train_dataloader(task_name, task_dataset)
-            for task_name, task_dataset in self.train_dataset.items()
+            task_key: self.get_single_train_dataloader(task_key, task_dataset)
+            for task_key, task_dataset in self.train_dataset.items()
         })
 
 
@@ -233,7 +218,7 @@ def run_multitask(cfg, model_args, training_args, tokenizer, mode="train", *args
     trainer = MultitaskTrainer(
         model=multitask_model,
         args=training_args,
-        data_collator=DataCollatorForTokenClassification(tokenizer), # this as strict superset of nlpdatacollator
+        data_collator=TaskDependentCollator(tokenizer),
         train_dataset=train_dataset
     )
     if mode == "train":
@@ -251,9 +236,9 @@ def run_multitask(cfg, model_args, training_args, tokenizer, mode="train", *args
                 task_key,
                 trainer.get_eval_dataloader(eval_dataset=features_dict[task_key][split_key])
             )
-            preds_dict[task_name] = trainer.prediction_loop( # ! careful, I changed the method
+            preds_dict[task_key] = trainer.prediction_loop(
                 eval_dataloader,
-                description=f"Validation: {task_name}",
+                description=f"Validation: {task_key}",
             )
         predictions_file = osp.join('./eval/', cfg.EVAL.SAVE_FN.format(f"{cfg.VARIANT}_{osp.split(model_args.model_name_or_path)[1]}_{split_key}"))
         torch.save(preds_dict, predictions_file)

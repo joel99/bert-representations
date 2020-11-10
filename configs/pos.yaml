@@ -2,8 +2,10 @@ DATA:
     DATAPATH: "/srv/share/svanga3/bert-representations/all_datasets/"
 TRAIN:
     NUM_EPOCHS_PER_TASK: 3
-    CHECKPOINT_INTERVAL: 390
+    CHECKPOINT_INTERVAL: 439
+    EVAL_STEPS: 139
     BATCH_SIZE: 32
+    # DO_VAL: False
 TASK:
     TASKS:
         - pos
