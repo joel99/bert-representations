@@ -339,3 +339,18 @@ class MultitaskTrainer(transformers.Trainer):
 
 #%%
 # Now do it with POS
+pos_dataset = nlp.load_dataset('conll2003', cache_dir="/srv/share/svanga3/bert-representations/nlp_datasets/POS/")
+def get_label_list(labels):
+        unique_labels = set()
+        for label in labels:
+            unique_labels = unique_labels | set(label)
+        label_list = list(unique_labels)
+        label_list.sort()
+        return label_list
+
+label_list = get_label_list(pos_dataset["train"]["pos"])
+label_to_id = {l: i for i, l in enumerate(label_list)}
+num_labels = len(label_list)
+
+#%%
+label_list

@@ -3,7 +3,10 @@ DATA:
 TRAIN:
     NUM_EPOCHS_PER_TASK: 3
     CHECKPOINT_INTERVAL: 390
-    BATCH_SIZE: 32
 TASK:
     TASKS:
+        - mnli
+        - sst_2
+        - sts_b
         - pos
+    MULTITASK_STRATEGY: "ROUND_ROBIN"

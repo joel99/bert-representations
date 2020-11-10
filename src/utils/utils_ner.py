@@ -73,7 +73,6 @@ class TokenClassificationTask:
         raise NotImplementedError
 
 def convert_examples_to_features(
-        self,
         examples: List[InputExample],
         label_list: List[str],
         max_seq_length: int,

@@ -48,6 +48,7 @@ def make_training_args(cfg, checkpoint_path=None):
         save_steps=cfg.TRAIN.CHECKPOINT_INTERVAL,
         evaluate_during_training=not is_multitasking and cfg.TRAIN.DO_VAL,
         learning_rate=cfg.TRAIN.LR_INIT,
+        warmup_steps=cfg.TRAIN.LR_WARMUP_STEPS,
         weight_decay=cfg.TRAIN.WEIGHT_DECAY,
         eval_steps=cfg.TRAIN.EVAL_STEPS,
         seed=cfg.SEED
@@ -68,9 +69,12 @@ def get_runner_func(
 
     tokenizer = AutoTokenizer.from_pretrained(
         cfg.MODEL.BASE,
+        use_fast=True,
     )
 
     assert len(cfg.TASK.TASKS) > 0, "requires positive number of tasks"
+    for task in cfg.TASK.TASKS:
+        assert task in TASK_DICT, f"unknown task {task}"
     if len(cfg.TASK.TASKS) == 1:
         task = cfg.TASK.TASKS[0]
         training_args = make_training_args(cfg, checkpoint_path=checkpoint_path)

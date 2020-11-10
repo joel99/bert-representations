@@ -1,9 +1,9 @@
+MODEL_DIR: "/srv/share/svanga3/bert-representations/"
 DATA:
     DATAPATH: "/srv/share/svanga3/bert-representations/all_datasets/"
 TRAIN:
     NUM_EPOCHS_PER_TASK: 3
     CHECKPOINT_INTERVAL: 390
-    BATCH_SIZE: 32
 TASK:
     TASKS:
         - pos

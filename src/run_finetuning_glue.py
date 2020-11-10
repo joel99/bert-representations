@@ -2,12 +2,11 @@
 from yacs.config import CfgNode as CN
 
 # Src: https://colab.research.google.com/github/huggingface/blog/blob/master/notebooks/trainer/01_text_classification.ipynb
-from transformers import AutoConfig, AutoModelForSequenceClassification, GlueDataset
 from transformers import GlueDataTrainingArguments as DataTrainingArguments
 from transformers import (
     Trainer,
+    DataCollatorWithPadding
 )
-import transformers
 # transformers.logging.set_verbosity_info()
 from src.utils import (
     logger,
@@ -38,13 +37,13 @@ def run_glue(task_key, cfg, model, model_args, training_args, tokenizer, mode="t
     # eval_dataset = glue_dataset[task_key]['validation_mismached']
     # train_dataset = GlueDataset(data_args, tokenizer=tokenizer, limit_length=cfg.TRAIN.TASK_LIMIT)
     # eval_dataset = GlueDataset(data_args, tokenizer=tokenizer, mode='dev')
-
     trainer = Trainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         compute_metrics=get_eval_metrics_func(task_name),
+        data_collator=DataCollatorWithPadding(tokenizer)
     )
 
     if mode == "train":

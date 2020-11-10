@@ -2,7 +2,7 @@ import logging
 import os
 from typing import List, TextIO, Union
 
-from conllu import parse_incr
+# from conllu import parse_incr
 
 from src.utils.utils_ner import InputExample, Split, TokenClassificationTask
 
@@ -104,36 +104,36 @@ class Chunk(NER):
 
 
 class POS(TokenClassificationTask):
-    def read_examples_from_file(self, data_dir, mode: Union[Split, str]) -> List[InputExample]:
-        if isinstance(mode, Split):
-            mode = mode.value
-        file_path = os.path.join(data_dir, f"{mode}.txt")
-        guid_index = 1
-        examples = []
+    # def read_examples_from_file(self, data_dir, mode: Union[Split, str]) -> List[InputExample]:
+    #     if isinstance(mode, Split):
+    #         mode = mode.value
+    #     file_path = os.path.join(data_dir, f"{mode}.txt")
+    #     guid_index = 1
+    #     examples = []
 
-        with open(file_path, encoding="utf-8") as f:
-            for sentence in parse_incr(f):
-                words = []
-                labels = []
-                for token in sentence:
-                    words.append(token["form"])
-                    labels.append(token["upos"])
-                assert len(words) == len(labels)
-                if words:
-                    examples.append(InputExample(guid=f"{mode}-{guid_index}", words=words, labels=labels))
-                    guid_index += 1
-        return examples
+    #     with open(file_path, encoding="utf-8") as f:
+    #         for sentence in parse_incr(f):
+    #             words = []
+    #             labels = []
+    #             for token in sentence:
+    #                 words.append(token["form"])
+    #                 labels.append(token["upos"])
+    #             assert len(words) == len(labels)
+    #             if words:
+    #                 examples.append(InputExample(guid=f"{mode}-{guid_index}", words=words, labels=labels))
+    #                 guid_index += 1
+    #     return examples
 
-    def write_predictions_to_file(self, writer: TextIO, test_input_reader: TextIO, preds_list: List):
-        example_id = 0
-        for sentence in parse_incr(test_input_reader):
-            s_p = preds_list[example_id]
-            out = ""
-            for token in sentence:
-                out += f'{token["form"]} ({token["upos"]}|{s_p.pop(0)}) '
-            out += "\n"
-            writer.write(out)
-            example_id += 1
+    # def write_predictions_to_file(self, writer: TextIO, test_input_reader: TextIO, preds_list: List):
+    #     example_id = 0
+    #     for sentence in parse_incr(test_input_reader):
+    #         s_p = preds_list[example_id]
+    #         out = ""
+    #         for token in sentence:
+    #             out += f'{token["form"]} ({token["upos"]}|{s_p.pop(0)}) '
+    #         out += "\n"
+    #         writer.write(out)
+    #         example_id += 1
 
     def get_labels(self, path: str) -> List[str]:
         if path:

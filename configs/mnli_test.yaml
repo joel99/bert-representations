@@ -4,3 +4,7 @@ TRAIN:
     CHECKPOINT_INTERVAL: 2000
     EVAL_STEPS: 2000
     NUM_EPOCHS_PER_TASK: 1
+TASK:
+    TASKS:
+        - mnli
+

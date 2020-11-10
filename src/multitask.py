@@ -15,7 +15,7 @@ from transformers.data.data_collator import DataCollator, InputDataClass, defaul
 import datasets as nlp
 
 from src.registry import get_model_type, get_config, load_features_dict
-from src.utils import ModelArguments, get_eval_metrics_func
+from src.utils import ModelArguments, get_eval_metrics_func, TASK_KEY_TO_NAME, DataCollatorForTokenClassification
 
 class MultitaskModel(transformers.PreTrainedModel):
     def __init__(self, encoder, taskmodels_dict):
@@ -82,7 +82,7 @@ def create_multitask_model(model_args, config: CN):
     model_configs = {}
     for task in config.TASK.TASKS:
         model_types[task] = get_model_type(task, config)
-        model_configs[task] = get_config(task, config, model_args)[0]
+        model_configs[task] = get_config(task, config)[0]
     return MultitaskModel.create(
         model_args=model_args,
         model_type_dict=model_types,
@@ -99,6 +99,8 @@ def NLPDataCollator(features: List[Union[InputDataClass, Dict]]) -> Dict[str, to
         # NLP data sets current works presents features as lists of dictionary
         # (one per example), so we  will adapt the collate_batch logic for that
         if "labels" in first and first["labels"] is not None:
+            # import pdb
+            # pdb.set_trace()
             if first["labels"].dtype == torch.int64:
                 labels = torch.tensor([f["labels"] for f in features], dtype=torch.long)
             else:
@@ -110,6 +112,7 @@ def NLPDataCollator(features: List[Union[InputDataClass, Dict]]) -> Dict[str, to
         return batch
     else:
         # otherwise, revert to using the default collate_batch
+    # This doesn't seem to be necessary anymore?
         return default_data_collator(features)
 
 class StrIgnoreDevice(str):
@@ -230,7 +233,7 @@ def run_multitask(cfg, model_args, training_args, tokenizer, mode="train", *args
     trainer = MultitaskTrainer(
         model=multitask_model,
         args=training_args,
-        data_collator=NLPDataCollator,
+        data_collator=DataCollatorForTokenClassification(tokenizer), # this as strict superset of nlpdatacollator
         train_dataset=train_dataset
     )
     if mode == "train":
@@ -240,13 +243,13 @@ def run_multitask(cfg, model_args, training_args, tokenizer, mode="train", *args
         # Print individual evaluations
         preds_dict = {}
         split_key = "validation"
-        for task_name in cfg.TASK.TASKS:
+        for task_key in cfg.TASK.TASKS:
             split_key = cfg.EVAL.SPLIT
-            if task_name == "mnli":
+            if task_key == "mnli":
                 split_key = f"{split_key}_matched"
             eval_dataloader = DataLoaderWithTaskname(
-                task_name,
-                trainer.get_eval_dataloader(eval_dataset=features_dict[task_name][split_key])
+                task_key,
+                trainer.get_eval_dataloader(eval_dataset=features_dict[task_key][split_key])
             )
             preds_dict[task_name] = trainer.prediction_loop( # ! careful, I changed the method
                 eval_dataloader,
@@ -254,7 +257,8 @@ def run_multitask(cfg, model_args, training_args, tokenizer, mode="train", *args
             )
         predictions_file = osp.join('./eval/', cfg.EVAL.SAVE_FN.format(f"{cfg.VARIANT}_{osp.split(model_args.model_name_or_path)[1]}_{split_key}"))
         torch.save(preds_dict, predictions_file)
-        for task_name in cfg.TASK.TASKS:
+        for task_key in cfg.TASK.TASKS:
+            task_name = TASK_KEY_TO_NAME[task_key]
             evaluator = get_eval_metrics_func(task_name)
             evaluation = evaluator(preds_dict[task_name])
             print(task_name, evaluation)
