@@ -1,8 +1,10 @@
 DATA:
     DATAPATH: "/srv/share/svanga3/bert-representations/all_datasets"
 TRAIN:
-    NUM_EPOCHS_PER_TASK: 3
-    EVAL_STEPS: 180
+    NUM_UPDATES_PER_TASK: 1200
+    LR_WARMUP_STEPS: 120
+    EVAL_STEPS: 120
+    BATCH_SIZE: 32
 TASK:
     TASKS:
         - sts_b

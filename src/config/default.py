@@ -52,12 +52,14 @@ _C.TASK.FROZEN_LAYERS = -1 # Don't freeze any
 # TODO support freezing @ aysh
 
 
-# TODO implement nonsequential @ Joel
 _C.TASK.MULTITASK_STRATEGY = "SEQUENTIAL"
 # Most experiments can be done by training base -> A. (RQ 4.1, 4.2, 4.5).
-# SAMPLED -- random task sampled, forward and back
-# ROUND_ROBIN -- each task forward and back
-# MIXED -- all tasks forward pass, one back pass
+# SAMPLE -- dataset size proportional sampling
+# EQUAL_SAMPLE -- uniform sampling (requires NUM_UPDATES_PER_TASK)
+# EPOCH_SEQUENTIAL -- dataset size sequential
+# FULL_SEQUENTIAL -- sequential across epochs (mimicking manual sequential training) # ! TODO
+# EQUAL_SEQUENTIAL -- uniform sequential (requires NUM_UPDATES_PER_TASK)
+# MANUAL_SEQUENTIAL -- non-multitask outer loop sequential
 _C.TASK.MULTITASK_SAMPLER = "uniform"
 # "uniform", "size" -- proportional to dataset size
 
@@ -86,6 +88,7 @@ _C.TRAIN.CHECKPOINT_INTERVAL = 1000 # Num steps per checkpoint
 _C.TRAIN.LOG_INTERVAL = 500
 _C.TRAIN.LR_INIT = 2e-5 # Mosbach
 _C.TRAIN.LR_WARMUP_STEPS = 0
+_C.TRAIN.FIXED_LR = True # needed to multitasking
 _C.TRAIN.WEIGHT_DECAY = 0.0
 _C.TRAIN.EVAL_STEPS = 1000
 _C.EVAL = CN()

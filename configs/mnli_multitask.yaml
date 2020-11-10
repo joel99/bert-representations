@@ -10,4 +10,4 @@ TASK:
     TASKS:
         - mnli
         - sst_2
-    MULTITASK_STRATEGY: "ROUND_ROBIN"
+    MULTITASK_STRATEGY: "SAMPLE"

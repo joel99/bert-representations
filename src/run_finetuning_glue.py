@@ -4,7 +4,6 @@ from yacs.config import CfgNode as CN
 # Src: https://colab.research.google.com/github/huggingface/blog/blob/master/notebooks/trainer/01_text_classification.ipynb
 from transformers import GlueDataTrainingArguments as DataTrainingArguments
 from transformers import (
-    Trainer,
     DataCollatorWithPadding
 )
 # transformers.logging.set_verbosity_info()
@@ -12,10 +11,11 @@ from src.utils import (
     logger,
     get_eval_metrics_func,
     TASK_KEY_TO_NAME,
+    FixedTrainer
 )
 from src.registry import get_model, load_features_dict
 
-def run_glue(task_key, cfg, model, model_args, training_args, tokenizer, mode="train"):
+def run_glue(task_key, cfg, model, model_args, training_args, tokenizer, mode="train", **kwargs):
     r"""
         cfg: YACS cfg node
         ckpt_path: Unsupported
@@ -31,18 +31,18 @@ def run_glue(task_key, cfg, model, model_args, training_args, tokenizer, mode="t
     # print(glue_dataset.keys())
     train_dataset = glue_dataset[task_key]['train']
     split_key = cfg.EVAL.SPLIT
-    if task_name == "mnli":
+    if task_key == "mnli":
         split_key = f"{split_key}_matched"
     eval_dataset = glue_dataset[task_key][split_key]
     # eval_dataset = glue_dataset[task_key]['validation_mismached']
     # train_dataset = GlueDataset(data_args, tokenizer=tokenizer, limit_length=cfg.TRAIN.TASK_LIMIT)
     # eval_dataset = GlueDataset(data_args, tokenizer=tokenizer, mode='dev')
-    trainer = Trainer(
+    trainer = FixedTrainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        compute_metrics=get_eval_metrics_func(task_name),
+        compute_metrics=get_eval_metrics_func(task_key),
         data_collator=DataCollatorWithPadding(tokenizer)
     )
 

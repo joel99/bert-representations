@@ -6,8 +6,6 @@ from typing import Dict, List, Optional, Tuple
 from yacs.config import CfgNode as CN
 
 import numpy as np
-import torch.nn as nn
-
 import transformers
 from transformers import AutoConfig, glue_tasks_num_labels
 import datasets as nlp
@@ -94,7 +92,7 @@ def get_model(task_key: str, cfg: CN, model_args, ckpt_path=None):
 def convert_to_stsb_features(cfg, tokenizer, example_batch):
     inputs = list(zip(example_batch['sentence1'], example_batch['sentence2']))
     features = tokenizer.batch_encode_plus(
-        inputs, max_length=cfg.MODEL.MAX_LENGTH, padding=True, truncation=True,
+        inputs, max_length=cfg.MODEL.MAX_LENGTH, padding=False, truncation=True,
     )
     features["labels"] = example_batch["label"]
     return features
@@ -102,14 +100,14 @@ def convert_to_stsb_features(cfg, tokenizer, example_batch):
 def convert_to_mnli_features(cfg, tokenizer, example_batch):
     inputs = list(zip(example_batch['hypothesis'], example_batch['premise']))
     features = tokenizer.batch_encode_plus(
-        inputs, max_length=cfg.MODEL.MAX_LENGTH, padding=True, truncation=True,
+        inputs, max_length=cfg.MODEL.MAX_LENGTH, padding=False, truncation=True,
     )
     features["labels"] = example_batch["label"]
     return features
 
 def convert_to_sst2_features(cfg, tokenizer, example_batch):
     features = tokenizer.batch_encode_plus(
-        example_batch["sentence"], max_length=cfg.MODEL.MAX_LENGTH, padding=True, truncation=True,
+        example_batch["sentence"], max_length=cfg.MODEL.MAX_LENGTH, padding=False, truncation=True,
     )
     features["labels"] = example_batch["label"]
     return features

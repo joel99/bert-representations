@@ -11,13 +11,18 @@ from typing import List, Union, Dict
 from yacs.config import CfgNode as CN
 
 import transformers
-from transformers.data.data_collator import DataCollator, InputDataClass, DataCollatorWithPadding
+from transformers.data.data_collator import DataCollator, InputDataClass, DataCollatorWithPadding # , DataCollatorForTokenClassification
 import datasets as nlp
 
 from src.registry import get_model_type, get_config, load_features_dict
-from src.utils import ModelArguments, get_eval_metrics_func, TASK_KEY_TO_NAME, DataCollatorForTokenClassification
+from src.utils import (
+    ModelArguments,
+    get_eval_metrics_func,
+    TASK_KEY_TO_NAME,
+    DataCollatorForTokenClassification,
+    FixedTrainer
+)
 
-# Be careful, many
 class MultitaskModel(transformers.PreTrainedModel):
     def __init__(self, encoder, taskmodels_dict):
         """
@@ -135,7 +140,8 @@ class MultitaskDataloader:
     Data loader that combines and samples from multiple single-task
     data loaders.
     """
-    def __init__(self, dataloader_dict):
+    def __init__(self, config, dataloader_dict):
+        self.config = config
         self.dataloader_dict = dataloader_dict
         self.num_batches_dict = {
             task_name: len(dataloader)
@@ -159,10 +165,19 @@ class MultitaskDataloader:
         to sample from some-other distribution.
         """
         task_choice_list = []
-        for i, task_name in enumerate(self.task_name_list):
-            task_choice_list += [i] * self.num_batches_dict[task_name]
-        task_choice_list = np.array(task_choice_list)
-        np.random.shuffle(task_choice_list)
+        if "EQUAL" in self.config.TASK.MULTITASK_STRATEGY:
+            for i, task_name in enumerate(self.task_name_list):
+                task_choice_list += [i] * self.config.TRAIN.NUM_UPDATES_PER_TASK
+        else:
+            epoch_factor = 1
+            if self.config.TASK.MULTITASK_STRATEGY == "FULL_SEQUENTIAL":
+                # Cram all epoch's updates into one list
+                epoch_factor = self.config.TRAIN.NUM_EPOCHS_PER_TASK
+            for i, task_name in enumerate(self.task_name_list):
+                task_choice_list += [i] * self.num_batches_dict[task_name] * epoch_factor
+            task_choice_list = np.array(task_choice_list)
+        if "SAMPLE" in self.config.TASK.MULTITASK_STRATEGY:
+            np.random.shuffle(task_choice_list)
         dataloader_iter_dict = {
             task_name: iter(dataloader)
             for task_name, dataloader in self.dataloader_dict.items()
@@ -171,7 +186,11 @@ class MultitaskDataloader:
             task_name = self.task_name_list[task_choice]
             yield next(dataloader_iter_dict[task_name])
 
-class MultitaskTrainer(transformers.Trainer):
+class MultitaskTrainer(FixedTrainer):
+    def __init__(self, *args, config=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.config = config
+
     def get_single_train_dataloader(self, task_key, train_dataset):
         """
         Create a single-task data loader that also yields task names
@@ -202,7 +221,7 @@ class MultitaskTrainer(transformers.Trainer):
         but an iterable that returns a generator that samples from each
         task Dataloader
         """
-        return MultitaskDataloader({
+        return MultitaskDataloader(self.config, {
             task_key: self.get_single_train_dataloader(task_key, task_dataset)
             for task_key, task_dataset in self.train_dataset.items()
         })
@@ -217,6 +236,7 @@ def run_multitask(cfg, model_args, training_args, tokenizer, mode="train", *args
     }
     task_collator = TaskDependentCollator(tokenizer)
     trainer = MultitaskTrainer(
+        config=cfg,
         model=multitask_model,
         args=training_args,
         data_collator=task_collator,

@@ -5,5 +5,6 @@ from src.utils.common import (
     TASK_KEY_TO_NAME,
     find_most_recent_path,
     find_data_path,
-    DataCollatorForTokenClassification
+    DataCollatorForTokenClassification,
+    FixedTrainer
 )

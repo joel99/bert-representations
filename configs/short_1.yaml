@@ -12,4 +12,4 @@ TASK:
         - sts_b
         - sst_2
         - pos
-    MULTITASK_STRATEGY: "ROUND_ROBIN"
+    MULTITASK_STRATEGY: "SAMPLE"

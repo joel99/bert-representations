@@ -11,7 +11,6 @@ from transformers import (
     AutoModelForTokenClassification,
     AutoTokenizer,
     EvalPrediction,
-    Trainer,
     TrainingArguments,
     set_seed,
     PreTrainedTokenizerBase,
@@ -35,11 +34,12 @@ from transformers import (
 from src.utils import (
     logger,
     get_eval_metrics_func,
+    FixedTrainer
 )
 from src.registry import get_config
 
 
-def run_pos(task_key: str, cfg: CN, model, model_args, training_args, tokenizer, mode="train"):
+def run_pos(task_key: str, cfg: CN, model, model_args, training_args, tokenizer, mode="train", **kwargs):
     r"""
         cfg: YACS cfg node
         ckpt_path: Unsupported
@@ -62,7 +62,7 @@ def run_pos(task_key: str, cfg: CN, model, model_args, training_args, tokenizer,
     eval_dataset = pos_dataset["pos"]["validation"]
 
     # Initialize our Trainer
-    trainer = Trainer(
+    trainer = FixedTrainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,

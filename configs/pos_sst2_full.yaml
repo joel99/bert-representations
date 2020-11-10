@@ -2,10 +2,10 @@ MODEL_DIR: "/srv/share/svanga3/bert-representations/"
 DATA:
     DATAPATH: "/srv/share/svanga3/bert-representations/all_datasets/"
 TRAIN:
-    NUM_EPOCHS_PER_TASK: 1
-    CHECKPOINT_INTERVAL: 100
+    NUM_EPOCHS_PER_TASK: 3
+    CHECKPOINT_INTERVAL: 400
 TASK:
     TASKS:
         - pos
         - sst_2
-    MULTITASK_STRATEGY: "SEQUENTIAL"
+    MULTITASK_STRATEGY: "FULL_SEQUENTIAL"
