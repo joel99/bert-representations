@@ -69,8 +69,6 @@ def compute_glue_eval_metrics_regression(task_name: str, p: EvalPrediction) -> D
     return glue_compute_metrics(task_name, preds, p.label_ids)
 
 def compute_pos_metrics(label_map, p: EvalPrediction) -> Dict:
-    # label_map will be bound in run script
-    # TODO maybe refactor ^
     def align_predictions(predictions: np.ndarray, label_ids: np.ndarray) -> Tuple[List[int], List[int]]:
         # Token predictions need to be reduced to word predictions
         preds = np.argmax(predictions, axis=2)
@@ -97,15 +95,20 @@ def compute_pos_metrics(label_map, p: EvalPrediction) -> Dict:
 
 
 EVAL_METRICS_FUNC_DICT = {
-    'sts-b': lambda p: compute_glue_eval_metrics_regression('sts-b', p),
-    'POS': compute_pos_metrics
+    'sts_b': lambda p: compute_glue_eval_metrics_regression('sts-b', p),
+    'pos': compute_pos_metrics
 }
 
-def get_eval_metrics_func(task_name) -> Dict:
+def get_eval_metrics_func(task_key) -> Dict:
     r""" Wrapper for all tasks """
-    if task_name in EVAL_METRICS_FUNC_DICT:
-        return EVAL_METRICS_FUNC_DICT[task_name]
+    if task_key in EVAL_METRICS_FUNC_DICT:
+        func = EVAL_METRICS_FUNC_DICT[task_key]
+        if task_key == "pos":
+            _, label_map = pos_label_info()
+            return lambda p: func(label_map, p)
+        return func
     else:
+        task_name = TASK_KEY_TO_NAME[task_key]
         return lambda p: compute_glue_eval_metrics(task_name, p)
 
 # For data args
@@ -240,3 +243,8 @@ class DataCollatorForTokenClassification:
             batch["labels"] = [[self.label_pad_token_id] * (sequence_length - len(label)) + label for label in labels]
         batch = {k: torch.tensor(v, dtype=torch.int64) for k, v in batch.items()}
         return batch
+
+def pos_label_info():
+    labels = POS_LABELS
+    label_map: Dict[int, str] = {i: label for i, label in enumerate(labels)}
+    return labels, label_map

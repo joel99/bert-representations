@@ -215,10 +215,11 @@ def run_multitask(cfg, model_args, training_args, tokenizer, mode="train", *args
         task_name: dataset["train"]
         for task_name, dataset in features_dict.items()
     }
+    task_collator = TaskDependentCollator(tokenizer)
     trainer = MultitaskTrainer(
         model=multitask_model,
         args=training_args,
-        data_collator=TaskDependentCollator(tokenizer),
+        data_collator=task_collator,
         train_dataset=train_dataset
     )
     if mode == "train":
@@ -234,7 +235,11 @@ def run_multitask(cfg, model_args, training_args, tokenizer, mode="train", *args
                 split_key = f"{split_key}_matched"
             eval_dataloader = DataLoaderWithTaskname(
                 task_key,
-                trainer.get_eval_dataloader(eval_dataset=features_dict[task_key][split_key])
+                data_loader=DataLoader(
+                    features_dict[task_key][split_key],
+                    batch_size=cfg.EVAL.BATCH_SIZE,
+                    collate_fn=lambda f: task_collator(task_key, f)
+                )
             )
             preds_dict[task_key] = trainer.prediction_loop(
                 eval_dataloader,
@@ -243,7 +248,7 @@ def run_multitask(cfg, model_args, training_args, tokenizer, mode="train", *args
         predictions_file = osp.join('./eval/', cfg.EVAL.SAVE_FN.format(f"{cfg.VARIANT}_{osp.split(model_args.model_name_or_path)[1]}_{split_key}"))
         torch.save(preds_dict, predictions_file)
         for task_key in cfg.TASK.TASKS:
+            evaluator = get_eval_metrics_func(task_key)
+            evaluation = evaluator(preds_dict[task_key])
             task_name = TASK_KEY_TO_NAME[task_key]
-            evaluator = get_eval_metrics_func(task_name)
-            evaluation = evaluator(preds_dict[task_name])
             print(task_name, evaluation)

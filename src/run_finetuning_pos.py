@@ -56,15 +56,10 @@ def run_pos(task_key: str, cfg: CN, model, model_args, training_args, tokenizer,
     # The .from_pretrained methods guarantee that only one local process can concurrently
     # download model & vocab.
 
-    config, labels, label_map = get_config(task_key, cfg)
-
     # Get datasets
     pos_dataset = load_features_dict(tokenizer, cfg)
     train_dataset = pos_dataset["pos"]["train"]
     eval_dataset = pos_dataset["pos"]["validation"]
-
-    compute_metrics_raw = get_eval_metrics_func(task_name)
-    compute_metrics = lambda p: compute_metrics_raw(label_map, p)
 
     # Initialize our Trainer
     trainer = Trainer(
@@ -72,7 +67,7 @@ def run_pos(task_key: str, cfg: CN, model, model_args, training_args, tokenizer,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        compute_metrics=compute_metrics,
+        compute_metrics=get_eval_metrics_func(task_key),
         tokenizer=tokenizer,
         data_collator=DataCollatorForTokenClassification(tokenizer),
     )

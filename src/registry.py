@@ -17,7 +17,7 @@ from src.utils import (
     ModelArguments,
     TASK_KEY_TO_NAME
 )
-from src.utils.common import POS_LABELS
+from src.utils.common import pos_label_info
 
 def get_glue_config(cfg: CN, model_args, name: str):
     num_labels = glue_tasks_num_labels[name]
@@ -30,8 +30,7 @@ def get_glue_config(cfg: CN, model_args, name: str):
     ),)
 
 def get_pos_config(cfg: CN, model_args, *args):
-    labels = POS_LABELS
-    label_map: Dict[int, str] = {i: label for i, label in enumerate(labels)}
+    labels, label_map = pos_label_info()
     num_labels = len(labels)
     print(f"labels:{labels}")
 
@@ -128,7 +127,7 @@ def convert_to_pos_features(cfg, tokenizer, examples):
     #     label_list.sort()
     #     return label_list
     # label_list = get_label_list(datasets["train"][label_column_name])
-    label_list = POS_LABELS
+    label_list = pos_label_info()[0]
     label_to_id = {l: i for i, l in enumerate(label_list)}
     tokenized_inputs = tokenizer(
         examples["words"],
