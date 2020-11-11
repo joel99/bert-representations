@@ -10,6 +10,8 @@ from torch.utils.data.sampler import RandomSampler
 from typing import List, Union, Dict
 from yacs.config import CfgNode as CN
 
+from itertools import cycle
+
 import transformers
 from transformers.data.data_collator import DataCollator, InputDataClass, DataCollatorWithPadding # , DataCollatorForTokenClassification
 import datasets as nlp
@@ -152,9 +154,15 @@ class MultitaskDataloader:
             len(dataloader.dataset)
             for dataloader in self.dataloader_dict.values()
         )
+        self.epoch_factor = 1
+        if self.config.TASK.MULTITASK_STRATEGY == "FULL_SEQUENTIAL":
+            # Cram all epoch's updates into one list
+            self.epoch_factor = self.config.TRAIN.NUM_EPOCHS_PER_TASK
 
     def __len__(self):
-        return sum(self.num_batches_dict.values())
+        if "EQUAL" in self.config.TASK.MULTITASK_STRATEGY:
+            return len(self.task_name_list) * self.config.TRAIN.NUM_UPDATES_PER_TASK
+        return sum(self.num_batches_dict.values()) * self.epoch_factor
 
     def __iter__(self):
         """
@@ -169,17 +177,13 @@ class MultitaskDataloader:
             for i, task_name in enumerate(self.task_name_list):
                 task_choice_list += [i] * self.config.TRAIN.NUM_UPDATES_PER_TASK
         else:
-            epoch_factor = 1
-            if self.config.TASK.MULTITASK_STRATEGY == "FULL_SEQUENTIAL":
-                # Cram all epoch's updates into one list
-                epoch_factor = self.config.TRAIN.NUM_EPOCHS_PER_TASK
             for i, task_name in enumerate(self.task_name_list):
-                task_choice_list += [i] * self.num_batches_dict[task_name] * epoch_factor
+                task_choice_list += [i] * self.num_batches_dict[task_name] * self.epoch_factor
             task_choice_list = np.array(task_choice_list)
         if "SAMPLE" in self.config.TASK.MULTITASK_STRATEGY:
             np.random.shuffle(task_choice_list)
         dataloader_iter_dict = {
-            task_name: iter(dataloader)
+            task_name: cycle(dataloader)
             for task_name, dataloader in self.dataloader_dict.items()
         }
         for task_choice in task_choice_list:
