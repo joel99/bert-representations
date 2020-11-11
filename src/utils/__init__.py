@@ -6,5 +6,7 @@ from src.utils.common import (
     find_most_recent_path,
     find_data_path,
     DataCollatorForTokenClassification,
-    FixedTrainer
+    FixedTrainer,
+    rsetattr,
+    rgetattr
 )

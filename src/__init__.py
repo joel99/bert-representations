@@ -14,7 +14,8 @@ from src.utils import (
 from src.run_finetuning_pos import run_pos
 from src.run_finetuning_glue import run_glue
 from src.registry import get_model
-from src.multitask import run_multitask
+from src.multitask import run_multitask, MultitaskModel
+from src.branched_multitask import BranchedMultitaskModel
 # init depends on common
 # finetuning depnds on cmmon
 # common depends on finetuning
@@ -88,6 +89,10 @@ def get_runner_func(
     assert len(cfg.TASK.TASKS) > 0, "requires positive number of tasks"
     for task in cfg.TASK.TASKS:
         assert task in TASK_DICT, f"unknown task {task}"
+    if len(cfg.MODEL.HEAD_BRANCHES) > 0:
+        for branch in cfg.MODEL.HEAD_BRANCHES:
+            for task in branch:
+                assert task in TASK_DICT, f"unknown task {task}"
     if len(cfg.TASK.TASKS) == 1:
         task = cfg.TASK.TASKS[0]
         training_args = make_training_args(cfg, checkpoint_path=checkpoint_path)
@@ -151,9 +156,11 @@ def get_runner_func(
         if "FULL_SEQUENTIAL" in cfg.TASK.MULTITASK_STRATEGY:
             assert cfg.TRAIN.NUM_UPDATES_PER_TASK < 0, "Full sequencing uses epochs"
         training_args = make_training_args(cfg, checkpoint_path=checkpoint_path)
+        multitask_cls = MultitaskModel if cfg.MODEL.HEAD_FIRST_LAYERS == 0 else BranchedMultitaskModel
         def bound_multitask(*args, **kwargs):
             run_multitask(
                 cfg,
+                multitask_cls,
                 model_args,
                 training_args,
                 tokenizer,

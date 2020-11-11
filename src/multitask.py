@@ -24,7 +24,7 @@ from src.utils import (
 )
 
 class MultitaskModel(transformers.PreTrainedModel):
-    def __init__(self, encoder, taskmodels_dict):
+    def __init__(self, taskmodels_dict, encoder=None):
         """
         Setting MultitaskModel up as a PretrainedModel allows us
         to take better advantage of Trainer features
@@ -74,12 +74,12 @@ class MultitaskModel(transformers.PreTrainedModel):
                 setattr(model, "bert", shared_encoder)
             taskmodels_dict[task_name] = model
 
-        return cls(encoder=shared_encoder, taskmodels_dict=taskmodels_dict)
+        return cls(taskmodels_dict=taskmodels_dict, encoder=shared_encoder)
 
     def forward(self, task_name, **kwargs):
         return self.taskmodels_dict[task_name](**kwargs)
 
-def create_multitask_model(model_args, config: CN):
+def create_multitask_model(model_args, config: CN, model_cls: nn.Module):
     # if checkpoint_path is not None:
     #     # Since there is no diff b/n loading TokenClassifiers and SequenceClassifiers, we can just call BertPreTrainedModel
     #     return BertPretrainedModel.from_pretrained(checkpoint_path) # fingers crossed
@@ -89,7 +89,7 @@ def create_multitask_model(model_args, config: CN):
     for task in config.TASK.TASKS:
         model_types[task] = get_model_type(task, config)
         model_configs[task] = get_config(task, config)[0]
-    return MultitaskModel.create(
+    return model_cls.create(
         model_args=model_args,
         model_type_dict=model_types,
         model_config_dict=model_configs,
@@ -227,8 +227,9 @@ class MultitaskTrainer(FixedTrainer):
         })
 
 
-def run_multitask(cfg, model_args, training_args, tokenizer, mode="train", *args, **kwargs):
-    multitask_model = create_multitask_model(model_args, cfg)
+def run_multitask(cfg, multitask_model_cls, model_args, training_args, tokenizer, mode="train", *args, **kwargs):
+    multitask_model = create_multitask_model(model_args, cfg, multitask_model_cls)
+
     features_dict = load_features_dict(tokenizer, cfg)
     train_dataset = {
         task_name: dataset["train"]
