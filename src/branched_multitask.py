@@ -90,4 +90,12 @@ class BranchedMultitaskModel(MultitaskModel):
                     for name, module in zip(branch_module_names, branch_modules[group_index]):
                         rsetattr(model, name, module)
             taskmodels_dict[task_name] = model
+
+        # ! Freezing not supported for branched (just not implemented, shouldn't be too bad)
+        # if config.MODEL.FROZEN_LAYERS > -1:
+        #     for param in shared_encoder.embeddings.parameters():
+        #         param.requires_grad = False
+        #     for l in range(config.MODEL.FROZEN_LAYERS + 1):
+        #         for param in shared_encoder.encoder.layer[l].parameters():
+        #             param.requires_grad = False
         return cls(taskmodels_dict=taskmodels_dict)

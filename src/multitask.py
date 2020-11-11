@@ -61,7 +61,6 @@ class MultitaskModel(transformers.PreTrainedModel):
         if is_ckpt:
             # Loading an existing model -- be careful. Following PretrainedModel loading scheme.
             # Note that we save redundant weights (just due to this architecture's setup)
-            # We'll overwrite the central encoder repeatedly, as we
             total_state_dict = torch.load(osp.join(model_args.model_name_or_path, "pytorch_model.bin"), map_location="cpu")
 
         for task_name, model_type in model_type_dict.items():
@@ -76,6 +75,13 @@ class MultitaskModel(transformers.PreTrainedModel):
                 setattr(model, "bert", shared_encoder)
             taskmodels_dict[task_name] = model
 
+        # Freeze layers
+        if config.MODEL.FROZEN_LAYERS > -1:
+            for param in shared_encoder.embeddings.parameters():
+                param.requires_grad = False
+            for l in range(config.MODEL.FROZEN_LAYERS + 1):
+                for param in shared_encoder.encoder.layer[l].parameters():
+                    param.requires_grad = False
         return cls(taskmodels_dict=taskmodels_dict, encoder=shared_encoder)
 
     def forward(self, task_name, **kwargs):

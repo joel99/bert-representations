@@ -48,8 +48,6 @@ _C.TASK.HEAD_FIRST_EPOCHS = 0 # Number of layers to fine-tune head layers before
 
 # "features" - feature extraction
 # TODO support feature extraction (RQ 4.3) @aysh
-_C.TASK.FROZEN_LAYERS = -1 # Don't freeze any
-# TODO support freezing @ aysh
 
 
 _C.TASK.MULTITASK_STRATEGY = "SEQUENTIAL"
@@ -74,8 +72,10 @@ _C.DATA.DATAPATH = "/srv/share/svanga3/bert-representations/all_datasets/"
 _C.MODEL = CN()
 _C.MODEL.BASE = "bert-base-uncased" # distilbert-base-cased
 _C.MODEL.MAX_LENGTH = 128
-_C.MODEL.HEAD_FIRST_LAYERS = 0 # Reference for number of BERT top-k encoder layers. If single task, this may be used for e.g. only tuning these layers, for multitask, can be used to separately clone top-k layers.
+_C.MODEL.HEAD_FIRST_LAYERS = 0 # Reference for number of BERT top-k encoder layers. Used for multitask, to create branches of top-k layers.
 _C.MODEL.HEAD_BRANCHES = [] # If model is branched, these lists specify which task indices belong in each branch.
+_C.MODEL.FROZEN_LAYERS = -1 # Bottom K layers frozen (0-indexed)
+
 # -----------------------------------------------------------------------------
 # Train Config
 # -----------------------------------------------------------------------------
