@@ -66,7 +66,7 @@ _C.TASK.MULTITASK_SAMPLER = "uniform"
 _C.DATA = CN()
 # `bert-representations` considers multiple tasks, and requires all datasets to share a common datapath. Mark it below.
 # A given task's will receive a datapath pointing <DATAPATH>/<task_name> (symbolic links accepted)
-_C.DATA.DATAPATH = 'data/'
+_C.DATA.DATAPATH = "/srv/share/svanga3/bert-representations/all_datasets/"
 
 # -----------------------------------------------------------------------------
 # Model
@@ -74,6 +74,8 @@ _C.DATA.DATAPATH = 'data/'
 _C.MODEL = CN()
 _C.MODEL.BASE = "bert-base-uncased" # distilbert-base-cased
 _C.MODEL.MAX_LENGTH = 128
+_C.MODEL.HEAD_FIRST_LAYERS = 0 # Reference for number of BERT top-k encoder layers. If single task, this may be used for e.g. only tuning these layers, for multitask, can be used to separately clone top-k layers.
+_C.MODEL.HEAD_BRANCHES = [] # If model is branched, these lists specify which task indices belong in each branch.
 # -----------------------------------------------------------------------------
 # Train Config
 # -----------------------------------------------------------------------------
@@ -85,7 +87,7 @@ _C.TRAIN.TASK_LIMIT = 100000 # Not affected
 _C.TRAIN.NUM_EPOCHS_PER_TASK = 1
 _C.TRAIN.NUM_UPDATES_PER_TASK = -1 # Will override num_epochs_per_task if > 0
 _C.TRAIN.CHECKPOINT_INTERVAL = 1000 # Num steps per checkpoint
-_C.TRAIN.LOG_INTERVAL = 500
+_C.TRAIN.LOG_INTERVAL = 100
 _C.TRAIN.LR_INIT = 2e-5 # Mosbach
 _C.TRAIN.LR_WARMUP_STEPS = 0
 _C.TRAIN.FIXED_LR = True # needed to multitasking

@@ -22,6 +22,7 @@ from src.config.default import get_config
 # ! Address warnings (save optimizer)
 
 DO_PRESERVE_RUNS = False # Whether to fail if runs exist
+ALL_EVAL_KEY = "all"
 
 def get_parser():
     parser = argparse.ArgumentParser()
@@ -127,9 +128,8 @@ def prepare_config(exp_config: Union[List[str], str], run_type: str, ckpt_path="
     os.makedirs(config.LOG_DIR, exist_ok=True)
 
     if ckpt_path is not None:
-        if not osp.exists(ckpt_path):
+        if ckpt_path != ALL_EVAL_KEY and not osp.exists(ckpt_path):
             ckpt_path = osp.join(config.MODEL_DIR, ckpt_path)
-
     return config, ckpt_path
 
 def run_exp(exp_config: Union[List[str], str], run_type: str, ckpt_path="", run_id=None, eval_split=None, opts=None) -> None:
@@ -139,7 +139,15 @@ def run_exp(exp_config: Union[List[str], str], run_type: str, ckpt_path="", run_
     logger.add_filehandler(logfile_path)
 
     set_seed(config.SEED)
+    all_paths = [ckpt_path]
+    if ckpt_path == ALL_EVAL_KEY:
+        all_paths = os.listdir(config.MODEL_DIR)
+        all_paths = [osp.join(config.MODEL_DIR, p) for p in all_paths]
+    for path in all_paths:
+        print(f"Starting {run_type} ... {path}")
+        indiv_run(config, run_type, ckpt_path=path)
 
+def indiv_run(config, run_type, ckpt_path=""):
     if ckpt_path is not None:
         runner_func = get_runner_func(config, checkpoint_path=ckpt_path, mode=run_type)
     else:

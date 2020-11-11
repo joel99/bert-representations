@@ -4,3 +4,5 @@ share
 tb
 eval
 __pycache__
+slurm_logs/
+*.out

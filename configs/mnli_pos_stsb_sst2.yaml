@@ -1,0 +1,10 @@
+TRAIN:
+    NUM_UPDATES_PER_TASK: 6000
+    CHECKPOINT_INTERVAL: 3000
+TASK:
+    MULTITASK_STRATEGY: "EQUAL_SEQUENTIAL"
+    TASKS:
+        - mnli
+        - pos
+        - sts_b
+        - sst_2

@@ -40,6 +40,12 @@ MULTITASK_STRATEGIES = {
 
 def make_training_args(cfg, checkpoint_path=None):
     is_multitasking = len(cfg.TASK.TASKS) > 1 and cfg.TASK.MULTITASK_STRATEGY != "MANUAL_SEQUENTIAL"
+    num_updates = cfg.TRAIN.NUM_UPDATES_PER_TASK
+    if "EQUAL" in cfg.TASK.MULTITASK_STRATEGY:
+        num_updates *= len(cfg.TASK.TASKS) # *nb the extra epoch in pbar is just a quirk of HuggingFace
+    num_epochs = cfg.TRAIN.NUM_EPOCHS_PER_TASK
+    if cfg.TASK.MULTITASK_STRATEGY == "FULL_SEQUENTIAL":
+        num_epochs = 1
     return TrainingArguments(
         output_dir=cfg.MODEL_DIR,
         overwrite_output_dir=checkpoint_path is not None, # ? uncertain about this
@@ -47,8 +53,8 @@ def make_training_args(cfg, checkpoint_path=None):
         do_eval=not is_multitasking and cfg.TRAIN.DO_VAL,
         per_device_train_batch_size=cfg.TRAIN.BATCH_SIZE,
         per_device_eval_batch_size=cfg.EVAL.BATCH_SIZE,
-        num_train_epochs=1 if cfg.TASK.MULTITASK_STRATEGY == "FULL_SEQUENTIAL" else cfg.TRAIN.NUM_EPOCHS_PER_TASK,
-        max_steps=cfg.TRAIN.NUM_UPDATES_PER_TASK,
+        num_train_epochs=num_epochs,
+        max_steps=num_updates,
         logging_steps=cfg.TRAIN.LOG_INTERVAL,
         logging_first_step=True,
         logging_dir=cfg.TENSORBOARD_DIR,
@@ -140,9 +146,6 @@ def get_runner_func(
     else:
         if "EQUAL" in cfg.TASK.MULTITASK_STRATEGY:
             assert cfg.TRAIN.NUM_UPDATES_PER_TASK > 0, "equal settings require update specification"
-            cfg.defrost()
-            cfg.TRAIN.NUM_UPDATES_PER_TASK *= len(cfg.TASK.TASKS)
-            cfg.freeze()
         else:
             assert cfg.TRAIN.NUM_UPDATES_PER_TASK <= 0, "unsafe to run equal strategies without epoch setting"
         if "FULL_SEQUENTIAL" in cfg.TASK.MULTITASK_STRATEGY:
