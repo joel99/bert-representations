@@ -283,4 +283,5 @@ def run_multitask(cfg, multitask_model_cls, model_args, training_args, tokenizer
             evaluation = evaluator(preds_dict[task_key])
             task_name = TASK_KEY_TO_NAME[task_key]
             results[task_name] = evaluation
+            print(task_name, evaluation)
         torch.save(results, predictions_file)

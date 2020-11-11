@@ -5,11 +5,6 @@ A normal project might have main scripts, trainers, and model files. HuggingFace
 
 We still use a configuration system in order to track our experiments. Our main script will forward to a fully configured downstream script (e.g. the finetuning tasks should also be a part of configuration).
 
-## Tasks for Joel
-- do it again (match reported)
-
-Q: Do the models being finetuned has their base saved separately from their head?
-
 ## Installation
 Install requirements in a virtual environment of your preference, using
 
@@ -17,7 +12,8 @@ Install requirements in a virtual environment of your preference, using
 
 ## Tasklog
 - cite huggingface
-- Pull HuggingFace and set up pretrained BERT
-- Pull in GLUE + other tasks
-- Setup fine-tuning pipeline
 - CKA utilities
+
+### Experimental Notes
+- [set cache](https://huggingface.co/transformers/installation.html#caching-models)
+- use pip to install HuggingFace

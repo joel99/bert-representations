@@ -6,9 +6,11 @@ TASK:
     TASKS:
         - pos
         - sst_2
+        - mnli
+        -
     MULTITASK_STRATEGY: "EQUAL_SEQUENTIAL"
 MODEL:
-    HEAD_FIRST_LAYERS: 6
+    HEAD_FIRST_LAYERS: 2
     HEAD_BRANCHES:
         - [pos]
         - [sst_2]
