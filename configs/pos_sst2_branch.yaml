@@ -1,0 +1,15 @@
+SEED: 2
+TRAIN:
+    NUM_UPDATES_PER_TASK: 1000
+    CHECKPOINT_INTERVAL: 1000
+TASK:
+    TASKS:
+        - pos
+        - sst_2
+    MULTITASK_STRATEGY: "EQUAL_SEQUENTIAL"
+MODEL:
+    HEAD_FIRST_LAYERS: 6
+    HEAD_BRANCHES:
+        - [pos]
+        - [sst_2]
+# Sanity check -- this should forget less than pos_sst2_eq-seq

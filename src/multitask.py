@@ -277,9 +277,10 @@ def run_multitask(cfg, multitask_model_cls, model_args, training_args, tokenizer
                 description=f"Validation: {task_key}",
             )
         predictions_file = osp.join('./eval/', cfg.EVAL.SAVE_FN.format(f"{cfg.VARIANT}_{osp.split(model_args.model_name_or_path)[1]}_{split_key}"))
-        torch.save(preds_dict, predictions_file)
+        results = {}
         for task_key in cfg.TASK.TASKS:
             evaluator = get_eval_metrics_func(task_key)
             evaluation = evaluator(preds_dict[task_key])
             task_name = TASK_KEY_TO_NAME[task_key]
-            print(task_name, evaluation)
+            results[task_name] = evaluation
+        torch.save(results, predictions_file)
