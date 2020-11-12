@@ -22,7 +22,8 @@ from src.utils import (
     get_eval_metrics_func,
     TASK_KEY_TO_NAME,
     DataCollatorForTokenClassification,
-    FixedTrainer
+    FixedTrainer,
+    get_extract_path
 )
 
 class MultitaskModel(transformers.PreTrainedModel):
@@ -197,10 +198,6 @@ class MultitaskDataloader:
             yield next(dataloader_iter_dict[task_name])
 
 class MultitaskTrainer(FixedTrainer):
-    def __init__(self, *args, config=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.config = config
-
     def get_single_train_dataloader(self, task_key, train_dataset):
         """
         Create a single-task data loader that also yields task names
@@ -231,7 +228,7 @@ class MultitaskTrainer(FixedTrainer):
         but an iterable that returns a generator that samples from each
         task Dataloader
         """
-        return MultitaskDataloader(self.config, {
+        return MultitaskDataloader(self.custom_cfg, {
             task_key: self.get_single_train_dataloader(task_key, task_dataset)
             for task_key, task_dataset in self.train_dataset.items()
         })
@@ -275,11 +272,13 @@ def run_multitask(cfg, multitask_model_cls, model_args, training_args, tokenizer
                     collate_fn=lambda f: task_collator(task_key, f)
                 )
             )
+            extract_dir, extract_fn = osp.split(extract_path)
+            extract_path = osp.join(extract_dir, f"{task_key}_{extract_fn}")
             preds_dict[task_key] = trainer.prediction_loop(
                 eval_dataloader,
                 description=f"Validation: {task_key}",
                 extract_path=extract_path,
-                limit_tokens=cfg.TASK.EXTRACT_TOKENS_LIMIT
+                cache_path=osp.join(cfg.TASK.EXTRACT_TOKENS_MASK_CACHE, task_key)
             )
         predictions_file = osp.join('./eval/', cfg.EVAL.SAVE_FN.format(f"{cfg.VARIANT}_{osp.split(model_args.model_name_or_path)[1]}_{split_key}"))
         results = {}

@@ -297,6 +297,10 @@ def nested_concat(tensors, new_tensors, padding_index=-100):
         raise TypeError(f"Unsupported type for concatenation: got {type(tensors)}")
 
 class FixedTrainer(transformers.Trainer):
+    def __init__(self, *args, config=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.custom_cfg = config
+
     # fixed LR # TODO and multitask patch
     def create_optimizer_and_scheduler(self, num_training_steps: int):
         """
@@ -361,7 +365,8 @@ class FixedTrainer(transformers.Trainer):
         return (loss, logits.detach(), labels, outputs[-1] if len(outputs) == 3 else None)
 
     def prediction_loop(
-        self, dataloader: DataLoader, description: str, prediction_loss_only: Optional[bool] = None, extract_path: Optional[str] = None, limit_tokens: Optional[int] = 5000
+        self, dataloader: DataLoader, description: str, prediction_loss_only: Optional[bool] = None, extract_path: Optional[str] = None,
+        cache_path: Optional[str] = None
     ) -> PredictionOutput:
         """
         Prediction/evaluation loop, shared by :obj:`Trainer.evaluate()` and :obj:`Trainer.predict()`.
@@ -383,7 +388,7 @@ class FixedTrainer(transformers.Trainer):
 
         batch_size = dataloader.batch_size
         eval_losses: List[float] = []
-        hidden_states: List[Tuple[torch.tensor]] = None
+        hidden_states: torch.tensor = None
         preds: torch.Tensor = None
         label_ids: torch.Tensor = None
         model.eval()
@@ -392,14 +397,21 @@ class FixedTrainer(transformers.Trainer):
             self._past = None
 
         # Unfortunate, but we'll run through the dataloader once to count the number of tokens (or this could be pre-processed)
-        stimulus_mask = lambda tokens: (tokens != 101) & (tokens != 102) & (tokens != 0)
-        if extract_path:
-            # Calculate the random ratio of tokens to grab (we specify number of tokens to extract)
-            total_tokens = 0
-            for inputs in dataloader:
-                tokens = inputs.input_ids
-                total_tokens += stimulus_mask(tokens).sum()
-            subset_ratio = torch.true_divide(limit_tokens, total_tokens)
+        if extract_path is not None:
+            stimulus_mask = lambda tokens: (tokens != 101) & (tokens != 102) & (tokens != 0)
+            cached_masks = None
+            if osp.exists(f"{cache_path}.npy"):
+                # np instead of torch, something's funky with Vivek's env.
+                cached_masks = torch.from_numpy(np.load(f"{cache_path}.npy"))
+            else:
+                all_masks = None
+                limit_tokens = self.custom_cfg.TASK.EXTRACT_TOKENS_LIMIT
+                # Calculate the random ratio of tokens to grab (we specify number of tokens to extract)
+                total_tokens = 0
+                for inputs in dataloader:
+                    tokens = inputs.input_ids
+                    total_tokens += stimulus_mask(tokens).sum()
+                subset_ratio = torch.true_divide(limit_tokens, total_tokens)
 
         # Seed, we want to be sure that we're finding the same stimuli
         disable_tqdm = not self.is_local_process_zero() or self.args.disable_tqdm
@@ -407,13 +419,21 @@ class FixedTrainer(transformers.Trainer):
         for inputs in tqdm(dataloader, desc=description, disable=disable_tqdm):
             loss, logits, labels, states = self.prediction_step(model, inputs, prediction_loss_only, output_hidden_states=extract_path is not None)
             batch_size = inputs[list(inputs.keys())[0]].shape[0]
-            samples_count += batch_size
             if loss is not None:
                 eval_losses.append(loss * batch_size)
             if states is not None:
                 # L + 1 [ Batch x Length x Hidden ] (layers and embedding)
-                subset_mask = torch.full(inputs.input_ids.shape, subset_ratio, device=logits.device)
-                mask = (torch.bernoulli(subset_mask).long() & stimulus_mask(inputs.input_ids)).bool() # B X T
+                if cached_masks is not None:
+                    cached_masks = cached_masks.to(logits.device)
+                    mask = cached_masks[samples_count:samples_count + inputs.input_ids.shape[0]] # B x T
+                    mask = mask[:, :inputs.input_ids.shape[1]] # Dynamic padding
+                else:
+                    subset_mask = torch.full(inputs.input_ids.shape, subset_ratio, device=logits.device)
+                    mask = (torch.bernoulli(subset_mask).long() & stimulus_mask(inputs.input_ids)).bool() # B X T
+                    if all_masks is None:
+                        all_masks = mask
+                    else:
+                        all_masks = nested_concat(all_masks, mask, padding_index=-100) # B x T
                 # [1:] to drop embedding layer
                 states = torch.stack(states)[1:].permute(1, 2, 0, 3) # B x T x L x H
                 target_tokens = states[mask] # M x L x H
@@ -421,17 +441,22 @@ class FixedTrainer(transformers.Trainer):
                     hidden_states = target_tokens
                 else:
                     hidden_states = torch.cat([hidden_states, target_tokens], dim=0)
+            samples_count += batch_size
             if logits is not None:
                 preds = logits if preds is None else nested_concat(preds, logits, padding_index=-100)
             if labels is not None:
                 label_ids = labels if label_ids is None else nested_concat(label_ids, labels, padding_index=-100)
 
+        if extract_path is not None:
+            os.makedirs(osp.split(extract_path)[0], exist_ok=True)
+            np.save(extract_path, hidden_states.half().cpu().numpy()) # half to save memory
+            if cached_masks is None:
+                os.makedirs(osp.split(cache_path)[0], exist_ok=True)
+                np.save(cache_path, all_masks.cpu().numpy())
+
         if self.args.past_index and hasattr(self, "_past"):
             # Clean the state at the end of the evaluation loop
             delattr(self, "_past")
-
-        os.makedirs(osp.split(extract_path)[0], exist_ok=True)
-        torch.save(hidden_states.half(), extract_path) # half to save memory
 
         if self.args.local_rank != -1:
             # In distributed mode, concatenate all results from all nodes:
@@ -477,7 +502,7 @@ def rgetattr(obj, attr, *args):
     return functools.reduce(_getattr, [obj] + attr.split('.'))
 
 def get_extract_path(cfg, model_args):
-    return osp.join(cfg.MODEL_DIR, 'extracted', f"{osp.split(model_args.model_name_or_path)[1]}.pth")
+    return osp.join(cfg.MODEL_DIR, 'extracted', f"{osp.split(model_args.model_name_or_path)[1]}")
 
 def get_metrics_path(cfg, model_args):
     return osp.join('./eval/', cfg.EVAL.SAVE_FN.format(f"{cfg.VARIANT}_{osp.split(model_args.model_name_or_path)[1]}_validation"))

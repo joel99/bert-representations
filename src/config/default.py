@@ -49,6 +49,7 @@ _C.TASK.HEAD_FIRST_EPOCHS = 0 # Number of layers to fine-tune head layers before
 # "features" - feature extraction
 # TODO support feature extraction (RQ 4.3) @aysh
 
+_C.TASK.EXTRACT_TOKENS_MASK_CACHE = "/srv/share/svanga3/bert-representations/mask_cache/" # mask_cache/<task> will store val masks for that task.
 _C.TASK.EXTRACT_TOKENS_LIMIT = 5000 # TODO SUPPORT
 
 _C.TASK.MULTITASK_STRATEGY = "SEQUENTIAL"

@@ -49,7 +49,8 @@ def run_glue(task_key, cfg, model, model_args, training_args, tokenizer, mode="t
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         compute_metrics=get_eval_metrics_func(task_key),
-        data_collator=collator
+        data_collator=collator,
+        config=cfg
     )
 
     if mode == "train":
@@ -60,7 +61,7 @@ def run_glue(task_key, cfg, model, model_args, training_args, tokenizer, mode="t
             extract_path = get_extract_path(cfg, model_args)
         metrics = trainer.evaluate(
             extract_path=extract_path,
-            limit_tokens=cfg.TASK.EXTRACT_TOKENS_LIMIT
+            cache_path=osp.join(cfg.TASK.EXTRACT_TOKENS_MASK_CACHE, task_key)
         )
         metrics_file = get_metrics_path(cfg, model_args)
         torch.save(metrics, metrics_file)
