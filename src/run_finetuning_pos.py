@@ -1,4 +1,5 @@
 import os
+import os.path as osp
 import sys
 from dataclasses import dataclass, field
 from importlib import import_module
@@ -6,6 +7,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from yacs.config import CfgNode as CN
 
 import numpy as np
+import torch
 
 from transformers import (
     AutoModelForTokenClassification,
@@ -39,7 +41,7 @@ from src.utils import (
 from src.registry import get_config
 
 
-def run_pos(task_key: str, cfg: CN, model, model_args, training_args, tokenizer, mode="train", **kwargs):
+def run_pos(task_key: str, cfg: CN, model, model_args, training_args, tokenizer, mode="train", extract=False, **kwargs):
     r"""
         cfg: YACS cfg node
         ckpt_path: Unsupported
@@ -75,4 +77,7 @@ def run_pos(task_key: str, cfg: CN, model, model_args, training_args, tokenizer,
     if mode == "train":
         trainer.train()
     else:
-        trainer.evaluate()
+        metrics = trainer.evaluate()
+        metrics_file = osp.join('./eval/', cfg.EVAL.SAVE_FN.format(f"{cfg.VARIANT}_{osp.split(model_args.model_name_or_path)[1]}_{split_key}"))
+        torch.save(metrics, metrics_file)
+

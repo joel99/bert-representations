@@ -62,6 +62,11 @@ def get_parser():
         default="validation",
     )
 
+    # Extracted features are stored in ./<model_dir>/extracted/<checkpoint>.pth
+    parser.add_argument('--extract', '-x', dest='extract', action='store_true')
+    parser.add_argument('--no-extract', '-nx', dest='extract', action='store_false')
+    parser.set_defaults(extract=False)
+
     parser.add_argument(
         "opts",
         default=None,
@@ -132,8 +137,11 @@ def prepare_config(exp_config: Union[List[str], str], run_type: str, ckpt_path="
             ckpt_path = osp.join(config.MODEL_DIR, ckpt_path)
     return config, ckpt_path
 
-def run_exp(exp_config: Union[List[str], str], run_type: str, ckpt_path="", run_id=None, eval_split=None, opts=None) -> None:
+def run_exp(exp_config: Union[List[str], str], run_type: str, ckpt_path="", run_id=None, eval_split=None, extract=False, opts=None) -> None:
     config, ckpt_path = prepare_config(exp_config, run_type, ckpt_path, run_id, eval_split, opts)
+
+    if extract:
+        assert run_type == "eval", "Extraction not supported for train"
 
     logfile_path = osp.join(config.LOG_DIR, f"{config.VARIANT}.log")
     logger.add_filehandler(logfile_path)
@@ -145,9 +153,9 @@ def run_exp(exp_config: Union[List[str], str], run_type: str, ckpt_path="", run_
         all_paths = [osp.join(config.MODEL_DIR, p) for p in all_paths]
     for path in all_paths:
         print(f"Starting {run_type} ... {path}")
-        indiv_run(config, run_type, ckpt_path=path)
+        indiv_run(config, run_type, ckpt_path=path, extract=extract)
 
-def indiv_run(config, run_type, ckpt_path=""):
+def indiv_run(config, run_type, ckpt_path="", extract=False):
     if ckpt_path is not None:
         runner_func = get_runner_func(config, checkpoint_path=ckpt_path, mode=run_type)
     else:
@@ -161,7 +169,7 @@ def indiv_run(config, run_type, ckpt_path=""):
             check_exists(config.MODEL_DIR)
             check_exists(config.LOG_DIR)
         runner_func = get_runner_func(config, mode=run_type)
-    runner_func()
+    runner_func(extract=extract)
 
 if __name__ == "__main__":
     main()

@@ -49,6 +49,7 @@ _C.TASK.HEAD_FIRST_EPOCHS = 0 # Number of layers to fine-tune head layers before
 # "features" - feature extraction
 # TODO support feature extraction (RQ 4.3) @aysh
 
+_C.TASK.EXTRACT_TRIALS_LIMIT = 1000 # TODO SUPPORT
 
 _C.TASK.MULTITASK_STRATEGY = "SEQUENTIAL"
 # Most experiments can be done by training base -> A. (RQ 4.1, 4.2, 4.5).
