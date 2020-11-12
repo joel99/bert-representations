@@ -237,7 +237,7 @@ class MultitaskTrainer(FixedTrainer):
         })
 
 
-def run_multitask(cfg, multitask_model_cls, model_args, training_args, tokenizer, mode="train", *args, **kwargs):
+def run_multitask(cfg, multitask_model_cls, model_args, training_args, tokenizer, mode="train", extract=False, *args, **kwargs):
     multitask_model = create_multitask_model(model_args, cfg, multitask_model_cls)
 
     features_dict = load_features_dict(tokenizer, cfg)
@@ -260,6 +260,9 @@ def run_multitask(cfg, multitask_model_cls, model_args, training_args, tokenizer
         # Print individual evaluations
         preds_dict = {}
         split_key = "validation"
+        extract_path = None
+        if extract:
+            extract_path = get_extract_path(cfg, model_args)
         for task_key in cfg.TASK.TASKS:
             split_key = cfg.EVAL.SPLIT
             if task_key == "mnli":
@@ -275,6 +278,8 @@ def run_multitask(cfg, multitask_model_cls, model_args, training_args, tokenizer
             preds_dict[task_key] = trainer.prediction_loop(
                 eval_dataloader,
                 description=f"Validation: {task_key}",
+                extract_path=extract_path,
+                limit_tokens=cfg.TASK.EXTRACT_TOKENS_LIMIT
             )
         predictions_file = osp.join('./eval/', cfg.EVAL.SAVE_FN.format(f"{cfg.VARIANT}_{osp.split(model_args.model_name_or_path)[1]}_{split_key}"))
         results = {}

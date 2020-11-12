@@ -135,6 +135,7 @@ def prepare_config(exp_config: Union[List[str], str], run_type: str, ckpt_path="
     if ckpt_path is not None:
         if ckpt_path != ALL_EVAL_KEY and not osp.exists(ckpt_path):
             ckpt_path = osp.join(config.MODEL_DIR, ckpt_path)
+            assert osp.exists(ckpt_path)
     return config, ckpt_path
 
 def run_exp(exp_config: Union[List[str], str], run_type: str, ckpt_path="", run_id=None, eval_split=None, extract=False, opts=None) -> None:

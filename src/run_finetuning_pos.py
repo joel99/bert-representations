@@ -21,22 +21,13 @@ from src.registry import load_features_dict
 from src.utils import DataCollatorForTokenClassification
 
 from transformers import GlueDataTrainingArguments as DataTrainingArguments
-from transformers import (
-    Trainer,
-    glue_tasks_num_labels,
-    AutoConfig,
-    AutoModelForTokenClassification,
-    AutoTokenizer,
-    EvalPrediction,
-    HfArgumentParser,
-    TrainingArguments,
-    set_seed,
-)
 
 from src.utils import (
     logger,
     get_eval_metrics_func,
-    FixedTrainer
+    FixedTrainer,
+    get_extract_path,
+    get_metrics_path
 )
 from src.registry import get_config
 
@@ -77,7 +68,12 @@ def run_pos(task_key: str, cfg: CN, model, model_args, training_args, tokenizer,
     if mode == "train":
         trainer.train()
     else:
-        metrics = trainer.evaluate()
-        metrics_file = osp.join('./eval/', cfg.EVAL.SAVE_FN.format(f"{cfg.VARIANT}_{osp.split(model_args.model_name_or_path)[1]}_{split_key}"))
+        extract_path = None
+        if extract:
+            extract_path = get_extract_path(cfg, model_args)
+        metrics = trainer.evaluate(
+            extract_path=extract_path,
+            limit_tokens=cfg.TASK.EXTRACT_TOKENS_LIMIT
+        )
+        metrics_file = get_metrics_path(cfg, model_args)
         torch.save(metrics, metrics_file)
-

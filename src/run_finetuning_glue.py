@@ -3,6 +3,7 @@ import os.path as osp
 from yacs.config import CfgNode as CN
 
 import torch
+from torch.utils.data.dataloader import DataLoader
 
 # Src: https://colab.research.google.com/github/huggingface/blog/blob/master/notebooks/trainer/01_text_classification.ipynb
 from transformers import GlueDataTrainingArguments as DataTrainingArguments
@@ -13,11 +14,13 @@ from src.utils import (
     logger,
     get_eval_metrics_func,
     TASK_KEY_TO_NAME,
-    FixedTrainer
+    FixedTrainer,
+    get_extract_path,
+    get_metrics_path
 )
 from src.registry import load_features_dict
 
-def run_glue(task_key, cfg, model, model_args, training_args, tokenizer, mode="train", **kwargs):
+def run_glue(task_key, cfg, model, model_args, training_args, tokenizer, mode="train", extract=False, **kwargs):
     r"""
         cfg: YACS cfg node
         ckpt_path: Unsupported
@@ -39,18 +42,25 @@ def run_glue(task_key, cfg, model, model_args, training_args, tokenizer, mode="t
     # eval_dataset = glue_dataset[task_key]['validation_mismached']
     # train_dataset = GlueDataset(data_args, tokenizer=tokenizer, limit_length=cfg.TRAIN.TASK_LIMIT)
     # eval_dataset = GlueDataset(data_args, tokenizer=tokenizer, mode='dev')
+    collator = DataCollatorWithPadding(tokenizer)
     trainer = FixedTrainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         compute_metrics=get_eval_metrics_func(task_key),
-        data_collator=DataCollatorWithPadding(tokenizer)
+        data_collator=collator
     )
 
     if mode == "train":
         trainer.train()
     else:
-        metrics = trainer.evaluate()
-        metrics_file = osp.join('./eval/', cfg.EVAL.SAVE_FN.format(f"{cfg.VARIANT}_{osp.split(model_args.model_name_or_path)[1]}_{split_key}"))
+        extract_path = None
+        if extract:
+            extract_path = get_extract_path(cfg, model_args)
+        metrics = trainer.evaluate(
+            extract_path=extract_path,
+            limit_tokens=cfg.TASK.EXTRACT_TOKENS_LIMIT
+        )
+        metrics_file = get_metrics_path(cfg, model_args)
         torch.save(metrics, metrics_file)

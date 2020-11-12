@@ -7,12 +7,13 @@ import os.path as osp
 import socket
 from datetime import datetime
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union, Tuple, List
+from typing import Dict, Optional, Union, Tuple, List, Any
 from seqeval.metrics import accuracy_score, f1_score, precision_score, recall_score
 
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.utils.data.dataset import Dataset
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data.dataloader import DataLoader
 
@@ -22,8 +23,9 @@ from transformers import (
     EvalPrediction,
     glue_compute_metrics,
     PreTrainedTokenizerBase,
-    AdamW
+    AdamW,
 )
+
 from transformers.trainer_utils import (
     PredictionOutput
 )
@@ -323,9 +325,43 @@ class FixedTrainer(transformers.Trainer):
             )
         self.lr_scheduler = LambdaLR(self.optimizer, lambda x: 1) # constant
 
+    def evaluate(self, eval_dataset: Optional[Dataset] = None, **kwargs) -> Dict[str, float]:
+        eval_dataloader = self.get_eval_dataloader(eval_dataset)
+
+        output = self.prediction_loop(eval_dataloader, description="Evaluation", **kwargs)
+
+        self.log(output.metrics)
+
+        return output.metrics
+
+    def prediction_step(
+        self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]], prediction_loss_only: bool, output_hidden_states: Optional[bool] = False
+    ) -> Tuple[Optional[float], Optional[torch.Tensor], Optional[torch.Tensor]]:
+        has_labels = any(inputs.get(k) is not None for k in ["labels", "lm_labels", "masked_lm_labels"])
+
+        inputs = self._prepare_inputs(inputs)
+
+        with torch.no_grad():
+            outputs = model(**inputs, output_hidden_states=output_hidden_states)
+            if has_labels:
+                loss, logits = outputs[:2]
+                loss = loss.mean().item()
+            else:
+                loss = None
+                logits = outputs[0]
+            if self.args.past_index >= 0:
+                self._past = outputs[self.args.past_index if has_labels else self.args.past_index - 1]
+
+        if prediction_loss_only:
+            return (loss, None, None, None)
+
+        labels = inputs.get("labels")
+        if labels is not None:
+            labels = labels.detach()
+        return (loss, logits.detach(), labels, outputs[-1] if len(outputs) == 3 else None)
 
     def prediction_loop(
-        self, dataloader: DataLoader, description: str, prediction_loss_only: Optional[bool] = None
+        self, dataloader: DataLoader, description: str, prediction_loss_only: Optional[bool] = None, extract_path: Optional[str] = None, limit_tokens: Optional[int] = 5000
     ) -> PredictionOutput:
         """
         Prediction/evaluation loop, shared by :obj:`Trainer.evaluate()` and :obj:`Trainer.predict()`.
@@ -347,6 +383,7 @@ class FixedTrainer(transformers.Trainer):
 
         batch_size = dataloader.batch_size
         eval_losses: List[float] = []
+        hidden_states: List[Tuple[torch.tensor]] = None
         preds: torch.Tensor = None
         label_ids: torch.Tensor = None
         model.eval()
@@ -354,14 +391,36 @@ class FixedTrainer(transformers.Trainer):
         if self.args.past_index >= 0:
             self._past = None
 
+        # Unfortunate, but we'll run through the dataloader once to count the number of tokens (or this could be pre-processed)
+        stimulus_mask = lambda tokens: (tokens != 101) & (tokens != 102) & (tokens != 0)
+        if extract_path:
+            # Calculate the random ratio of tokens to grab (we specify number of tokens to extract)
+            total_tokens = 0
+            for inputs in dataloader:
+                tokens = inputs.input_ids
+                total_tokens += stimulus_mask(tokens).sum()
+            subset_ratio = torch.true_divide(limit_tokens, total_tokens)
+
+        # Seed, we want to be sure that we're finding the same stimuli
         disable_tqdm = not self.is_local_process_zero() or self.args.disable_tqdm
         samples_count = 0
         for inputs in tqdm(dataloader, desc=description, disable=disable_tqdm):
-            loss, logits, labels = self.prediction_step(model, inputs, prediction_loss_only)
+            loss, logits, labels, states = self.prediction_step(model, inputs, prediction_loss_only, output_hidden_states=extract_path is not None)
             batch_size = inputs[list(inputs.keys())[0]].shape[0]
             samples_count += batch_size
             if loss is not None:
                 eval_losses.append(loss * batch_size)
+            if states is not None:
+                # L + 1 [ Batch x Length x Hidden ] (layers and embedding)
+                subset_mask = torch.full(inputs.input_ids.shape, subset_ratio, device=logits.device)
+                mask = (torch.bernoulli(subset_mask).long() & stimulus_mask(inputs.input_ids)).bool() # B X T
+                # [1:] to drop embedding layer
+                states = torch.stack(states)[1:].permute(1, 2, 0, 3) # B x T x L x H
+                target_tokens = states[mask] # M x L x H
+                if hidden_states is None:
+                    hidden_states = target_tokens
+                else:
+                    hidden_states = torch.cat([hidden_states, target_tokens], dim=0)
             if logits is not None:
                 preds = logits if preds is None else nested_concat(preds, logits, padding_index=-100)
             if labels is not None:
@@ -370,6 +429,9 @@ class FixedTrainer(transformers.Trainer):
         if self.args.past_index and hasattr(self, "_past"):
             # Clean the state at the end of the evaluation loop
             delattr(self, "_past")
+
+        os.makedirs(osp.split(extract_path)[0], exist_ok=True)
+        torch.save(hidden_states.half(), extract_path) # half to save memory
 
         if self.args.local_rank != -1:
             # In distributed mode, concatenate all results from all nodes:
@@ -413,3 +475,9 @@ def rgetattr(obj, attr, *args):
     def _getattr(obj, attr):
         return getattr(obj, attr, *args)
     return functools.reduce(_getattr, [obj] + attr.split('.'))
+
+def get_extract_path(cfg, model_args):
+    return osp.join(cfg.MODEL_DIR, 'extracted', f"{osp.split(model_args.model_name_or_path)[1]}.pth")
+
+def get_metrics_path(cfg, model_args):
+    return osp.join('./eval/', cfg.EVAL.SAVE_FN.format(f"{cfg.VARIANT}_{osp.split(model_args.model_name_or_path)[1]}_validation"))
