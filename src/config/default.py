@@ -88,6 +88,7 @@ _C.TRAIN.BATCH_SIZE = 32
 _C.TRAIN.TASK_LIMIT = 100000 # Not affected
 _C.TRAIN.NUM_EPOCHS_PER_TASK = 1
 _C.TRAIN.NUM_UPDATES_PER_TASK = -1 # Will override num_epochs_per_task if > 0
+_C.TRAIN.UPDATE_SEQUENCE = [] # If mode == FIXED_SEQUENTIAL, and this is [a, b], will train A for a*NUM_UPDATES_PER_TASK, then B for b*NUM_UPDATES_PER_TASK,
 _C.TRAIN.CHECKPOINT_INTERVAL = 1000 # Num steps per checkpoint
 _C.TRAIN.LOG_INTERVAL = 100
 _C.TRAIN.LR_INIT = 2e-5 # Mosbach

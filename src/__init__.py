@@ -36,6 +36,7 @@ MULTITASK_STRATEGIES = {
     "EQUAL_SEQUENTIAL", # equal update sequential training
     "EQUAL_SAMPLE", # equal update sampled training
     "FULL_SEQUENTIAL", # multi-epoch sequential. trains task A for N epochs, then task B
+    "FIXED_SEQUENTIAL", # task A for a * NUM_UPDATES_PER_TASK, task B for b * NUM_UPDATES_PER_TASK
     "MANUAL_SEQUENTIAL" # Legacy
 }
 
@@ -44,6 +45,8 @@ def make_training_args(cfg, checkpoint_path=None):
     num_updates = cfg.TRAIN.NUM_UPDATES_PER_TASK
     if "EQUAL" in cfg.TASK.MULTITASK_STRATEGY:
         num_updates *= len(cfg.TASK.TASKS) # *nb the extra epoch in pbar is just a quirk of HuggingFace
+    if cfg.TASK.MULTITASK_STRATEGY == "FIXED_SEQUENTIAL":
+        num_updates *= sum(cfg.TRAIN.UPDATE_SEQUENCE)
     num_epochs = cfg.TRAIN.NUM_EPOCHS_PER_TASK
     if cfg.TASK.MULTITASK_STRATEGY == "FULL_SEQUENTIAL":
         num_epochs = 1
@@ -149,7 +152,7 @@ def get_runner_func(
 
         return sequential_evaluation
     else:
-        if "EQUAL" in cfg.TASK.MULTITASK_STRATEGY:
+        if "EQUAL" in cfg.TASK.MULTITASK_STRATEGY or cfg.TASK.MULTITASK_STRATEGY == "FIXED_SEQUENTIAL":
             assert cfg.TRAIN.NUM_UPDATES_PER_TASK > 0, "equal settings require update specification"
         else:
             assert cfg.TRAIN.NUM_UPDATES_PER_TASK <= 0, "unsafe to run equal strategies without epoch setting"

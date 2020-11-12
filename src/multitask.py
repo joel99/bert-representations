@@ -169,6 +169,8 @@ class MultitaskDataloader:
     def __len__(self):
         if "EQUAL" in self.config.TASK.MULTITASK_STRATEGY:
             return len(self.task_name_list) * self.config.TRAIN.NUM_UPDATES_PER_TASK
+        elif self.config.TASK.MULTITASK_STRATEGY == "FIXED_SEQUENTIAL":
+            return sum(self.config.TRAIN.UPDATE_SEQUENCE) * self.config.TRAIN.NUM_UPDATES_PER_TASK
         return sum(self.num_batches_dict.values()) * self.epoch_factor
 
     def __iter__(self):
@@ -183,6 +185,9 @@ class MultitaskDataloader:
         if "EQUAL" in self.config.TASK.MULTITASK_STRATEGY:
             for i, task_name in enumerate(self.task_name_list):
                 task_choice_list += [i] * self.config.TRAIN.NUM_UPDATES_PER_TASK
+        elif self.config.TASK.MULTITASK_STRATEGY == "FIXED_SEQUENTIAL":
+            for i, task_name in enumerate(self.task_name_list):
+                task_choice_list += [i] * (self.config.TRAIN.NUM_UPDATES_PER_TASK * self.config.TRAIN.UPDATE_SEQUENCE[i])
         else:
             for i, task_name in enumerate(self.task_name_list):
                 task_choice_list += [i] * self.num_batches_dict[task_name] * self.epoch_factor
@@ -260,6 +265,7 @@ def run_multitask(cfg, multitask_model_cls, model_args, training_args, tokenizer
         extract_path = None
         if extract:
             extract_path = get_extract_path(cfg, model_args)
+            extract_dir, extract_fn = osp.split(extract_path)
         for task_key in cfg.TASK.TASKS:
             split_key = cfg.EVAL.SPLIT
             if task_key == "mnli":
@@ -272,7 +278,6 @@ def run_multitask(cfg, multitask_model_cls, model_args, training_args, tokenizer
                     collate_fn=lambda f: task_collator(task_key, f)
                 )
             )
-            extract_dir, extract_fn = osp.split(extract_path)
             extract_path = osp.join(extract_dir, f"{task_key}_{extract_fn}")
             preds_dict[task_key] = trainer.prediction_loop(
                 eval_dataloader,
