@@ -409,7 +409,7 @@ class FixedTrainer(transformers.Trainer):
                 # Calculate the random ratio of tokens to grab (we specify number of tokens to extract)
                 total_tokens = 0
                 for inputs in dataloader:
-                    tokens = inputs.input_ids
+                    tokens = inputs["input_ids"]
                     total_tokens += stimulus_mask(tokens).sum()
                 subset_ratio = torch.true_divide(limit_tokens, total_tokens)
 
