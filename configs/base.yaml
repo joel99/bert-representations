@@ -1,0 +1,11 @@
+# Dummy base task - train 1 step on mnli
+DATA:
+    DATAPATH: "/srv/share/svanga3/bert-representations/all_datasets"
+TRAIN:
+    NUM_UPDATES_PER_TASK: 1
+    CHECKPOINT_INTERVAL: 1
+    EVAL_STEPS: 1
+TASK:
+    TASKS:
+        - mnli
+

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # Registry e.g. for config
 # * We use this abstraction so that multi-task models can be init-ed simply
-
+import os.path as osp
 from typing import Dict, List, Optional, Tuple
 from yacs.config import CfgNode as CN
 
 import numpy as np
+import torch
 import transformers
 from transformers import AutoConfig, glue_tasks_num_labels
 import datasets as nlp
@@ -71,17 +72,23 @@ def get_model_type(task_key: str, cfg: CN):
 def get_model(task_key: str, cfg: CN, model_args, ckpt_path=None):
     # Ruining huggingface's delicately chosen abstractions one function at a time
     model_type = get_model_type(task_key, cfg)
-    if ckpt_path is not None:
+    if ckpt_path is not None and not cfg.TRAIN.TRANSFER_INIT:
         model = model_type.from_pretrained(
             ckpt_path
         )
     else:
         model_cfg = get_config(task_key, cfg)[0]
+        state_dict = None
+        if ckpt_path is not None:
+            total_state_dict = torch.load(osp.join(ckpt_path, "pytorch_model.bin"), map_location="cpu")
+            state_dict = {k: v for k, v in total_state_dict.items() if k.startswith('bert')}
         model = model_type.from_pretrained(
             model_args.model_name_or_path,
-            config=model_cfg, # ! What is this config even for?
-            cache_dir=model_args.cache_dir
+            config=model_cfg,
+            cache_dir=model_args.cache_dir,
+            state_dict=state_dict
         )
+
     return model
 
 # ---

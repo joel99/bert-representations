@@ -19,6 +19,7 @@ _C.VARIANT = "experiment"
 _C.TENSORBOARD_DIR = "tb/"
 _C.MODEL_DIR = "models/"
 _C.LOG_DIR = "logs/"
+_C.EVAL_ON_COMPLETION = False # Used for AuC. Only supported on non-multitask.
 
 # -----------------------------------------------------------------------------
 # System
@@ -96,6 +97,9 @@ _C.TRAIN.LR_WARMUP_STEPS = 0
 _C.TRAIN.FIXED_LR = True # needed to multitasking
 _C.TRAIN.WEIGHT_DECAY = 0.0
 _C.TRAIN.EVAL_STEPS = 1000
+
+_C.TRAIN.TRANSFER_INIT = False
+
 _C.EVAL = CN()
 _C.EVAL.BATCH_SIZE = 128
 _C.EVAL.SAVE_FN = "{}.eval"

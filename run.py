@@ -3,9 +3,10 @@
 import os
 import os.path as osp
 import shutil
-from typing import Union, List
+from typing import Union, List, Tuple
 import argparse
 
+from yacs.config import CfgNode as CN
 from transformers import (
     set_seed,
 )
@@ -89,7 +90,7 @@ def check_exists(path, preserve=DO_PRESERVE_RUNS):
         return True
     return False
 
-def prepare_config(exp_config: Union[List[str], str], run_type: str, ckpt_path="", run_id=None, eval_split=None, opts=None) -> None:
+def prepare_config(exp_config: Union[List[str], str], run_type: str, ckpt_path="", run_id=None, eval_split=None, opts=None) -> Tuple[CN, str]:
     r"""Prepare config node / do some preprocessing
 
     Args:

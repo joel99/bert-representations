@@ -105,6 +105,12 @@ def get_runner_func(
         cfg.freeze()
 
         model = get_model(task, cfg, model_args, ckpt_path=checkpoint_path)
+        if cfg.MODEL.FROZEN_LAYERS > -1:
+            for param in model.bert.embeddings.parameters():
+                param.requires_grad = False
+            for l in range(cfg.MODEL.FROZEN_LAYERS + 1):
+                for param in model.bert.encoder.layer[l].parameters():
+                    param.requires_grad = False
         bound_task = lambda *args, **kwargs: \
             TASK_DICT[task](
                 task, # Pass the runner the task name so it can pull any information we want to keep flexible from the registry

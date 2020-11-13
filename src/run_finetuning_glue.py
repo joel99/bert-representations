@@ -55,7 +55,7 @@ def run_glue(task_key, cfg, model, model_args, training_args, tokenizer, mode="t
 
     if mode == "train":
         trainer.train()
-    else:
+    if mode != "train" or cfg.EVAL_ON_COMPLETION:
         extract_path = None
         if extract:
             extract_path = get_extract_path(cfg, model_args)

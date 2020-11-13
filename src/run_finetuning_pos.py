@@ -68,7 +68,7 @@ def run_pos(task_key: str, cfg: CN, model, model_args, training_args, tokenizer,
 
     if mode == "train":
         trainer.train()
-    else:
+    if mode != "train" or cfg.EVAL_ON_COMPLETION:
         extract_path = None
         if extract:
             extract_path = get_extract_path(cfg, model_args)
