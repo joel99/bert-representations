@@ -1,5 +1,5 @@
 import numpy as np
-
+import torch
 
 def _debiased_dot_product_similarity_helper(
     xty, sum_squared_rows_x, sum_squared_rows_y, squared_norm_x, squared_norm_y,
@@ -27,20 +27,24 @@ def feature_space_linear_cka(features_x, features_y, debiased=False):
   Returns:
     The value of CKA between X and Y.
   """
-  features_x = features_x - np.mean(features_x, 0, keepdims=True)
-  features_y = features_y - np.mean(features_y, 0, keepdims=True)
+  features_x = features_x - features_x.mean(0, keepdims=True)
+  features_y = features_y - features_y.mean(0, keepdims=True)
+  if torch.is_tensor(features_x):
+    dot_product_similarity = torch.norm(features_x.T @ features_y) ** 2
+    normalization_x = torch.norm(features_x.T @ features_x)
+    normalization_y = torch.norm(features_y.T @ features_y)
+  else:
+    dot_product_similarity = np.linalg.norm(features_x.T @ features_y) ** 2
+    normalization_x = np.linalg.norm(features_x.T @ features_x)
+    normalization_y = np.linalg.norm(features_y.T @ features_y)
 
-  dot_product_similarity = np.linalg.norm(features_x.T.dot(features_y)) ** 2
-  normalization_x = np.linalg.norm(features_x.T.dot(features_x))
-  normalization_y = np.linalg.norm(features_y.T.dot(features_y))
-
-  if debiased:
+  if debiased: # We don't use this, so it's not been made torch compatible
     n = features_x.shape[0]
     # Equivalent to np.sum(features_x ** 2, 1) but avoids an intermediate array.
     sum_squared_rows_x = np.einsum('ij,ij->i', features_x, features_x)
     sum_squared_rows_y = np.einsum('ij,ij->i', features_y, features_y)
-    squared_norm_x = np.sum(sum_squared_rows_x)
-    squared_norm_y = np.sum(sum_squared_rows_y)
+    squared_norm_x = sum_squared_rows_x.sum()
+    squared_norm_y = sum_squared_rows_y.sum()
 
     dot_product_similarity = _debiased_dot_product_similarity_helper(
         dot_product_similarity, sum_squared_rows_x, sum_squared_rows_y,

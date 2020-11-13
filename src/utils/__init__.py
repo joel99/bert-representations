@@ -12,3 +12,7 @@ from src.utils.common import (
     get_extract_path,
     get_metrics_path
 )
+
+from src.utils.cka import (
+    feature_space_linear_cka as cka
+)
