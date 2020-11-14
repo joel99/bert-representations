@@ -6,6 +6,5 @@ TRAIN:
     CHECKPOINT_INTERVAL: 1
     EVAL_STEPS: 1
 TASK:
-    TASKS:
-        - mnli
+    TASKS: []
 

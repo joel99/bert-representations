@@ -34,7 +34,7 @@ def run_exp(exp_config: Union[List[str], str], run_type: str, ckpt_path="", run_
 
     set_seed(config.SEED)
     for target_task in TASK_DICT:
-        if len(config.TASK.TASKS) == 0 or target_task == config.TASK.TASKS[0]:
+        if len(config.TASK.TASKS) > 0 and target_task == config.TASK.TASKS[0]:
             continue
         for l in range(0, BERT_LAYERS): # TODO -1
             print(f"Starting AuC task {target_task} ... layer {l}")
@@ -50,6 +50,10 @@ def run_exp(exp_config: Union[List[str], str], run_type: str, ckpt_path="", run_
             layer_cfg.TRAIN.TRANSFER_INIT = True
             if target_task != "mnli":
                 layer_cfg.TRAIN.NUM_UPDATES_PER_TASK = 2000
+            else:
+                layer_cfg.TRAIN.NUM_UPDATES_PER_TASK = 6000
+            layer_cfg.TRAIN.CHECKPOINT_INTERVAL = layer_cfg.TRAIN.NUM_UPDATES_PER_TASK
+            layer_cfg.TRAIN.EVAL_STEPS = layer_cfg.TRAIN.NUM_UPDATES_PER_TASK
             layer_cfg.freeze()
             indiv_run(layer_cfg, run_type, ckpt_path=ckpt_path)
 

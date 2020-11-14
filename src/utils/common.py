@@ -425,11 +425,11 @@ class FixedTrainer(transformers.Trainer):
                 # L + 1 [ Batch x Length x Hidden ] (layers and embedding)
                 if cached_masks is not None:
                     cached_masks = cached_masks.to(logits.device)
-                    mask = cached_masks[samples_count:samples_count + inputs.input_ids.shape[0]] # B x T
-                    mask = mask[:, :inputs.input_ids.shape[1]] # Dynamic padding
+                    mask = cached_masks[samples_count:samples_count + inputs["input_ids"].shape[0]] # B x T
+                    mask = mask[:, :inputs["input_ids"].shape[1]] # Dynamic padding
                 else:
-                    subset_mask = torch.full(inputs.input_ids.shape, subset_ratio, device=logits.device)
-                    mask = (torch.bernoulli(subset_mask).long() & stimulus_mask(inputs.input_ids)).bool() # B X T
+                    subset_mask = torch.full(inputs["input_ids"].shape, subset_ratio, device=logits.device)
+                    mask = (torch.bernoulli(subset_mask).long() & stimulus_mask(inputs["input_ids"])).bool() # B X T
                     if all_masks is None:
                         all_masks = mask
                     else:
@@ -506,3 +506,5 @@ def get_extract_path(cfg, model_args):
 
 def get_metrics_path(cfg, model_args):
     return osp.join('./eval/', cfg.EVAL.SAVE_FN.format(f"{cfg.VARIANT}_{osp.split(model_args.model_name_or_path)[1]}_validation"))
+
+NUM_BERT_LAYERS = 12

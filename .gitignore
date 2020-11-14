@@ -6,3 +6,4 @@ eval
 __pycache__
 slurm_logs/
 *.out
+*.png
