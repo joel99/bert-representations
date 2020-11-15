@@ -18,9 +18,9 @@ from analysis_utils import (
     SOURCES, TARGETS,
     get_metric, normalize_scores,
     pretty_print,
-    prep_plt
+    prep_plt,
+    get_avg_transfer
 )
-from cka_notes import get_avg_transfer
 
 freeze_template = "target_{}-freeze_{}-{}_checkpoint-{}_validation.eval"
 

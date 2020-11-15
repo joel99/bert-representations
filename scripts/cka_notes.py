@@ -31,7 +31,8 @@ from analysis_utils import (
     get_metric, normalize_scores,
     pretty_print,
     prep_plt,
-    get_repr_from_fn, get_repr, get_layer_similarity
+    get_repr_from_fn, get_repr, get_layer_similarity,
+    get_avg_transfer
 )
 #%%
 vivek_template = "/srv/share/svanga3/bert-representations/{}/extracted/checkpoint-{}.npy"
@@ -144,13 +145,6 @@ plt.savefig("test.png", dpi=300, bbox_inches="tight")
 
 #%%
 
-def get_avg_transfer(sim):
-    # 5 x 4, base on top
-    base_avg = torch.tensor(sim[-1]).mean()
-    others = sim[:-1]
-    others = torch.tensor(others) - torch.diag(torch.diag(torch.tensor(others)))
-    other_avg = torch.sum(others, dim=1) / (others.size(0) - 1)
-    return (*other_avg, base_avg)
 avg_transfer = get_avg_transfer(sim)
 print([f"{pretty_print(s)}: {t:.3f}" for s, t in zip(SOURCES, avg_transfer)])
 

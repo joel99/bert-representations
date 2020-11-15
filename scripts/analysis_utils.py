@@ -127,3 +127,21 @@ def get_layer_similarity(x, y):
             Y_1 = y[:, dim_y, :].squeeze()
             local_sim[dim_x, dim_y] = cka(X_1, Y_1).cpu().item()
     return local_sim
+
+def get_multi_repr(variant, task, checkpoint, template=repr_template):
+    return get_repr_from_fn(template.format(variant, task, checkpoint), device=device)
+
+def quick_map(task):
+    if task == "sts_b":
+        return "stsb"
+    elif task == "sst_2":
+        return "sst2"
+    return task
+
+def get_avg_transfer(sim):
+    # 5 x 4, base on top
+    base_avg = torch.tensor(sim[-1]).mean()
+    others = sim[:-1]
+    others = torch.tensor(others) - torch.diag(torch.diag(torch.tensor(others)))
+    other_avg = torch.sum(others, dim=1) / (others.size(0) - 1)
+    return (*other_avg, base_avg)

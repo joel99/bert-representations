@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn import metrics
 
-# SET YOUR DEVICE HERE
+# ! SET YOUR DEVICE HERE
 ALLOCATED_DEVICE_ID = 3
 os.environ["CUDA_VISIBLE_DEVICES"] = str(ALLOCATED_DEVICE_ID)
 import torch
@@ -32,22 +32,13 @@ from analysis_utils import (
     get_metric, normalize_scores, get_multi_metric,
     pretty_print,
     prep_plt,
-    get_repr_from_fn, get_repr, get_layer_similarity
+    get_repr_from_fn, get_repr, get_layer_similarity,
+    get_multi_repr, quick_map
 )
 
 #%%
 # Pull up both domains representations for a given checkpoint
 # We can use net shift between diagonals.
-template = "/srv/share/jye72/bert-representations/{}/extracted/{}_checkpoint-{}.npy"
-def get_multi_repr(variant, task, checkpoint):
-    return get_repr_from_fn(template.format(variant, task, checkpoint), device=device)
-
-def quick_map(task):
-    if task == "sts_b":
-        return "stsb"
-    elif task == "sst_2":
-        return "sst2"
-    return task
 
 def get_all_metrics(task_a, task_b, variant=None, suffix="validation", seq=True, ckpts=np.arange(500, 2500, 500)):
     task_a_results = []
