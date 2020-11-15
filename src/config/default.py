@@ -19,8 +19,7 @@ _C.VARIANT = "experiment"
 _C.TENSORBOARD_DIR = "tb/"
 _C.MODEL_DIR = "models/"
 _C.LOG_DIR = "logs/"
-_C.EVAL_ON_COMPLETION = False # Used for AuC. Only supported on non-multitask.
-
+_C.EVAL_ON_COMPLETION = True # Used for AuC. Only supported on non-multitask.
 # -----------------------------------------------------------------------------
 # System
 # -----------------------------------------------------------------------------

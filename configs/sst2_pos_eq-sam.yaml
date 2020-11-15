@@ -1,8 +1,9 @@
+SEED: 1
 TRAIN:
     NUM_UPDATES_PER_TASK: 1000
     CHECKPOINT_INTERVAL: 100
 TASK:
     TASKS:
-        - pos
         - sst_2
+        - pos
     MULTITASK_STRATEGY: "EQUAL_SAMPLE"

@@ -4,7 +4,7 @@ DATA:
     DATAPATH: "/srv/share/svanga3/bert-representations/all_datasets/"
 TRAIN:
     NUM_UPDATES_PER_TASK: 1000
-    CHECKPOINT_INTERVAL: 500
+    CHECKPOINT_INTERVAL: 200
 TASK:
     TASKS:
         - sts_b

@@ -278,7 +278,8 @@ def run_multitask(cfg, multitask_model_cls, model_args, training_args, tokenizer
                     collate_fn=lambda f: task_collator(task_key, f)
                 )
             )
-            extract_path = osp.join(extract_dir, f"{task_key}_{extract_fn}")
+            if extract:
+                extract_path = osp.join(extract_dir, f"{task_key}_{extract_fn}")
             preds_dict[task_key] = trainer.prediction_loop(
                 eval_dataloader,
                 description=f"Validation: {task_key}",

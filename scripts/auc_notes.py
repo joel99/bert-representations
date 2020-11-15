@@ -20,6 +20,7 @@ from analysis_utils import (
     pretty_print,
     prep_plt
 )
+from cka_notes import get_avg_transfer
 
 freeze_template = "target_{}-freeze_{}-{}_checkpoint-{}_validation.eval"
 
@@ -95,7 +96,7 @@ plt.savefig("test.png", dpi=300)
 
 #%%
 # Motivation: Regular fine-tuning doesn't give any signal.
-
+prep_plt()
 # Heatmap of normalized scores, without any freezing
 sim = np.zeros((len(SOURCES), len(TARGETS)))
 for s_i, source in enumerate(SOURCES):
@@ -104,17 +105,19 @@ for s_i, source in enumerate(SOURCES):
             sim[s_i, t_j] = 1.0
         else:
             sim[s_i, t_j] = get_unfrozen_score(source, target)
-ax = sns.heatmap(sim)
-# ax = sns.heatmap(sim, vmin=0.7, vmax=1.0)
+# ax = sns.heatmap(sim)
+ax = sns.heatmap(sim, vmin=0.7, vmax=1.0)
 ax.set_xticklabels(pretty_print(TARGETS))
 ax.set_yticklabels(pretty_print(SOURCES), rotation=20)
-plt.title("Task Transfer via Fine-Tuning, no freezing")
+ax.set_title("Fine-Tuning Transfer, no freezing")
 ax.invert_yaxis()
+plt.savefig("test.png", dpi=300, bbox_inches="tight")
 
 
 #%%
 # Approach
 # Heatmap of task transferability
+prep_plt()
 sim = np.zeros((len(SOURCES), len(TARGETS)))
 for s_i, source in enumerate(SOURCES):
     for t_j, target in enumerate(TARGETS):
@@ -125,23 +128,32 @@ for s_i, source in enumerate(SOURCES):
 ax = sns.heatmap(sim, vmin=0.7, vmax=1.0)
 ax.set_xticklabels(pretty_print(TARGETS))
 ax.set_yticklabels(pretty_print(SOURCES), rotation=20)
-plt.title("Transfer via Freezing AuC")
+plt.title("Fine-Tuning Transfer, freezing AuC")
 ax.invert_yaxis()
+plt.savefig("test.png", dpi=300, bbox_inches="tight")
+
 
 # Observations -- what does AuC tell us?
 # 1. MNLI <-> STS_B well, makes sense given task similarity
 # 2. Most transfer well to POS, but not vice versa => supports intuitive understanding that POS is a more specialized task
 
-avg_transfer = sim.mean(axis=1)
+avg_transfer = get_avg_transfer(sim)
+
 print([f"{pretty_print(s)}: {t:.3f}" for s, t in zip(SOURCES, avg_transfer)])
 # 3. Suggests MNLI is most useful, supporting it's use as an intermediate STILTS task
+torch.save(sim, "auc_sim.pth")
 
 #%%
+# Scatter cka vs auc for each pair
+from sklearn.metrics import explained_variance_score, r2_score
 
+auc_sim = torch.tensor(torch.load("auc_sim.pth"))
+cka_sim = torch.tensor(torch.load("cka_sim.pth"))
+blacklist_diag = [0, 5, 10, 15] # diag indices
+blacklist_mask = torch.ones_like(auc_sim).flatten().bool()
+blacklist_mask[blacklist_diag] = 0
+auc_points = torch.masked_select(auc_sim.flatten(), blacklist_mask)
+cka_points = torch.masked_select(cka_sim.flatten(), blacklist_mask)
 
-
-#%%
-# What tasks are universally useful?
-
-
-#%%
+plt.scatter(auc_points, cka_points)
+print(r2_score(auc_points, cka_points, multioutput='uniform_average'))

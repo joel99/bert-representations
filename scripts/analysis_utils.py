@@ -6,10 +6,11 @@ module_path = os.path.abspath(os.path.join('..'))
 if module_path not in sys.path:
     sys.path.append(module_path)
 import matplotlib.pyplot as plt
-
+import numpy as np
 import torch
 
-from src.utils.common import POS_LABELS
+from src.utils.common import POS_LABELS, NUM_BERT_LAYERS
+from src.utils import cka
 
 sst_2 = "sst_2"
 sts_b = "sts_b"
@@ -31,6 +32,16 @@ metric_key = {
     mnli: "eval_mnli/acc"
 }
 
+def metric_sans_eval(task):
+    return metric_key[task][5:]
+
+NAME_TO_KEY = {
+    "POS": pos,
+    "mnli": mnli,
+    "sst-2": sst_2,
+    "sts-b": sts_b
+}
+
 AT_CHANCE_RESULTS = {
     mnli: 1.0 / 3,
     sst_2: 0.5,
@@ -44,6 +55,10 @@ eval_dir = "../eval"
 def get_metric(filepath, task):
     info = torch.load(osp.join(eval_dir, filepath))
     return info[metric_key[task]]
+
+def get_multi_metric(filepath, eval_dir="../eval"):
+    info = torch.load(osp.join(eval_dir, filepath))
+    return {NAME_TO_KEY[k]: v[metric_sans_eval(NAME_TO_KEY[k])] for k, v in info.items()}
 
 def get_normalization_range(task):
     # Normalize such that worst is at-chance, best is pretrain->fine-tune.
@@ -93,3 +108,22 @@ def prep_plt(spine_alpha=1.0):
 
     plt.tight_layout()
 
+
+def get_repr_from_fn(fn, device=None):
+    return torch.from_numpy(
+        np.load(fn)
+    ).float().to(device)
+
+repr_template = "/srv/share/jye72/bert-representations/{}/extracted/checkpoint-{}.npy"
+
+def get_repr(task, ckpt, template=repr_template, **kwargs):
+    return get_repr_from_fn(template.format(task, ckpt), **kwargs)
+
+def get_layer_similarity(x, y):
+    local_sim = np.zeros((NUM_BERT_LAYERS, NUM_BERT_LAYERS))
+    for dim_x in range(NUM_BERT_LAYERS):
+        for dim_y in range(NUM_BERT_LAYERS):
+            X_1 = x[:, dim_x, :].squeeze()
+            Y_1 = y[:, dim_y, :].squeeze()
+            local_sim[dim_x, dim_y] = cka(X_1, Y_1).cpu().item()
+    return local_sim

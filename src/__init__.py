@@ -47,6 +47,7 @@ def make_training_args(cfg, checkpoint_path=None):
         num_updates *= len(cfg.TASK.TASKS) # *nb the extra epoch in pbar is just a quirk of HuggingFace
     if cfg.TASK.MULTITASK_STRATEGY == "FIXED_SEQUENTIAL":
         num_updates *= sum(cfg.TRAIN.UPDATE_SEQUENCE)
+    print(num_updates)
     num_epochs = cfg.TRAIN.NUM_EPOCHS_PER_TASK
     if cfg.TASK.MULTITASK_STRATEGY == "FULL_SEQUENTIAL":
         num_epochs = 1
