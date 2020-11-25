@@ -1,6 +1,7 @@
 # bert-representations
 A Unified View of BERT Representations in Fine-Tuning, Transfer, and Forgetting
-Course project for Deep Learning for Text. 
+
+Course project for Deep Learning for Text. We ask: How do BERT representations match model behavior?
 Work by Joel Ye, Sri Vivek Vanga, Ayush Shrivastava.
 
 Writeup (with citations) in `bert-representations.pdf`.
